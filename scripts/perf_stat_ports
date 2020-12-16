@@ -1,0 +1,3 @@
+#! /bin/bash
+
+sudo perf stat -e uops_dispatched.port_0 -e uops_dispatched.port_1 -e uops_dispatched.port_2_3 -e uops_dispatched.port_4_9 -e uops_dispatched.port_5 -e uops_dispatched.port_6 -e uops_dispatched.port_6 -e uops_dispatched.port_7_8 "$*" 

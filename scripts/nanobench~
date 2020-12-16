@@ -1,0 +1,3 @@
+#! /bin/bash
+
+sudo --preserve-env=PATH env ./~/.local/bin/nanoBench/nanoBench.sh

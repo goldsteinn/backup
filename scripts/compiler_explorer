@@ -1,0 +1,231 @@
+#! /usr/bin/env python3
+
+# basically is less good https://godbolt.org/ but can run it from bash / emacs
+
+import sys
+import ctypes
+import argparse
+import os
+import re
+import subprocess
+
+parser = argparse.ArgumentParser(
+    description='helper for creating new project / compiling existing')
+
+parser.add_argument("-v",
+                    "--verbosity",
+                    action="count",
+                    default=0,
+                    help="increase output verbosity")
+parser.add_argument(
+    "-p",
+    "--operation",
+    default="",
+    help="either \"create\", \"compile\", or \"delete\" project")
+parser.add_argument("-t", "--target", default="", help="name of project")
+parser.add_argument("-i",
+                    "--input",
+                    default="",
+                    help="name of file to include as input")
+parser.add_argument("-f",
+                    "--flags",
+                    default="-std=c++17 -O2 -march=native -mtune=native",
+                    help="add compiler flags")
+parser.add_argument("-e",
+                    "--extra_flags",
+                    default="",
+                    help="extra flags (instead of writing over defaults)")
+parser.add_argument(
+    "-s",
+    "--silent",
+    action="store_true",
+    default=False,
+    help="set if you don't want to see compiler errors in stdout")
+
+flags = parser.parse_args()
+verbose = flags.verbosity
+op = flags.operation
+target = flags.target
+cxxflags = flags.flags
+extra_flags = flags.extra_flags
+silent = flags.silent
+input_path = flags.input
+
+if op != "create" and op != "compile" and op != "delete":
+    print("Invalid operation: \"{}\"".format(op))
+    sys.exit(-1)
+
+if target == "" or ".." in target or "/" in target:
+    print("Invalid target: \"{}\"".format(target))
+    sys.exit(-1)
+
+std_includes = [
+    "#include <stdlib.h>", "#include <stdio.h>", "#include <stdint.h>",
+    "#include <string.h>", "#include <x86intrin.h>",
+    "#include \"../ATTR_HEADER.h\""
+]
+
+main_str = "int main(int argc, char ** argv) {}"
+
+ce_path = "/home/noah/programs/compile_output/{}"
+ce_command = "g++ {} {} {} -c -S -o - | c++filt | grep -vE '\\s+\\.'"
+
+half_output_break = "########################################"
+output_break = half_output_break + half_output_break
+
+
+def printed_len(s):
+    s = s.split()
+    l = 0
+    for i in range(1, len(s)):
+        l += len(s[i]) + 1
+    return 12 + l - 1
+
+
+def create_project():
+    project_path = ce_path.format(target)
+    if os.path.exists(project_path) is True:
+        print("Project {} already exists!".format(target))
+        sys.exit(-1)
+    try:
+        os.mkdir(project_path)
+    except OSError:
+        print("Failed to create project directory\n\t\"{}\"".format(
+            project_path))
+        sys.exit(-1)
+
+    project_path += "/{}-ce.cc".format(target)
+    try:
+        project_file = open(project_path, "w+")
+        for include in std_includes:
+            project_file.write(include + "\n")
+        project_file.write("\n\n\n\n")
+        project_file.write(main_str + "\n")
+        project_file.close()
+    except IOError:
+        print("Failed to create project file\n\t\"{}\"".format(project_path))
+
+
+def create_project_from_source():
+    project_path = ce_path.format(target)
+    if os.path.exists(project_path) is False:
+        try:
+            os.mkdir(project_path)
+        except OSError:
+            print("Failed to create project directory\n\t\"{}\"".format(
+                project_path))
+            sys.exit(-1)
+    project_path += "/{}-ce.cc".format(target)
+    try:
+        project_file = open(project_path, "w+")
+        for lines in open(input_path):
+            project_file.write(lines)
+        project_file.close()
+    except IOError:
+        print("Failed to create project file\n\t\"{}\"".format(project_path))
+
+
+def compile_project():
+    project_file_path = ce_path.format(target) + "/{}-ce.cc".format(target)
+    outfile_success_path = ce_path.format(target) + "/{}-ce.s".format(target)
+    outfile_error_path = ce_path.format(target) + "/{}-ce.error".format(target)
+    compile_command = ce_command.format(project_file_path, cxxflags,
+                                        extra_flags)
+
+    compile_process = subprocess.Popen(compile_command,
+                                       shell=True,
+                                       stdout=subprocess.PIPE,
+                                       stderr=subprocess.PIPE)
+    compile_process.wait(60)
+
+    ret = compile_process.returncode
+    _stdout_data, stderr_data = compile_process.communicate()
+    _stdout_data = re.sub(r'[.][L][F][A-Z]\d+[:]\n', r'',
+                          _stdout_data.decode("utf-8"))
+    _stdout_data = re.sub(r'[@][A-Z]+', r'', _stdout_data)
+    _stdout_data = _stdout_data.replace("%", "").replace("$", "").replace(
+        "ret", "ret\n")
+
+    stdout_data = ""
+    for lines in _stdout_data.splitlines():
+        numbers = []
+        if ".L" not in lines:
+            numbers = re.findall('.\d+', lines)
+        append_str = "// -> "
+        for n in numbers:
+            if n[0] != "-":
+                n = n[1:]
+            hex_n = ""
+            val = int(n)
+            if val > (1 << 32) or val < (-(1 << 31)):
+                hex_n = hex(ctypes.c_uint64(val).value)
+            else:
+                hex_n = hex(ctypes.c_uint32(val).value)
+            append_str += "{} = {}\t".format(n, hex_n)
+        if len(numbers) != 0:
+            filler = ""
+            if printed_len(lines) < 40:
+                filler = " ".ljust(40 - printed_len(lines))
+            stdout_data += lines + filler + "{}\n".format(append_str)
+        else:
+            stdout_data += lines + "\n"
+
+    stderr_data = stderr_data.decode("utf-8")
+
+    if ret != 0:
+        if verbose > 0 and silent is False:
+            print(output_break)
+            print("Compile Command:\n\t{}".format(compile_command))
+        if silent is False:
+            print(output_break)
+            print("Compile Error Output:\n\n{}".format(stderr_data))
+            print(output_break)
+        try:
+            os.system("rm -f {}".format(outfile_success_path))
+            outfile_error = open(outfile_error_path, "w+")
+            outfile_error.write(stdout_data + "\n\n" + stderr_data)
+            outfile_error.close()
+        except IOError:
+            print("Failed to create error output file\n\t\"{}\"".format(
+                outfile_error_path))
+    else:
+        if verbose > 0 and silent is False:
+            print(output_break)
+            print("Compile Command:\n\t{}".format(compile_command))
+        if silent is False:
+            print(output_break)
+            print("Compiler Success Output:\n\n{}".format(stdout_data))
+            print(output_break)
+        try:
+            os.system("rm -f {}".format(outfile_error_path))
+            outfile_success = open(outfile_success_path, "w+")
+            outfile_success.write(stdout_data + "\n\n" + stderr_data)
+            outfile_success.close()
+        except IOError:
+            print("Failed to create output file\n\t\"{}\"".format(
+                outfile_success_path))
+    sys.exit(ret)
+
+
+def delete_project():
+    project_path = ce_path.format(target)
+    os.system("rm -rf {}".format(project_path))
+
+
+if op == "create":
+    if (input_path != "") and ("-ce" not in input_path) and ("-ce"
+                                                             not in target):
+        create_project_from_source()
+    else:
+        input_path = input_path.replace("-ce", "")
+        target = target.replace("-ce", "")
+        create_project()
+elif op == "compile":
+    if (input_path != "") and ("-ce" not in input_path) and ("-ce"
+                                                             not in target):
+        create_project_from_source()
+    input_path = input_path.replace("-ce", "")
+    target = target.replace("-ce", "")
+    compile_project()
+else:
+    delete_project()

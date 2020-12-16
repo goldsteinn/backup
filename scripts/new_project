@@ -1,0 +1,8 @@
+#!/bin/bash
+
+#(cd $1; git init; git add .; git commit -a -m "new repo"; git remote add origin "git@github.com:goldsteinn/{$1}.git"; git remote -v; git push origin master)
+mkdir $1;
+git clone git@github.com:goldsteinn/mylib.git .temp_mylib
+rm -rf .temp_mylib/.git
+cp -r .temp_mylib/* $1/; cp .temp_mylib/.clang-format $1/
+rm -rf .temp_mylib

@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ ! -z "$2" ];
+   then
+       make clean
+       bear make
+fi
+
+clang-tidy-10 -p $1 $(find . -name *.c -o -name *.cpp -o -name *.hpp -o -name *.cc -o -name *.h)

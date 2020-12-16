@@ -1,0 +1,5 @@
+#! /bin/bash
+
+for i in *; do var="${i// /_}"; mv "${i}" "${var}"; done
+for i in *; do var=$(echo "$i" | tr '[:upper:]' '[:lower:]'); mv "${i}" "${var}"; done
+
