@@ -1,18 +1,31 @@
 #! /bin/bash
 
-if [ ! -z "$1"];
+if [ -z "$1" ];
 then
     echo "No source"
+    exit 1
 fi
 
-if [ ! -z "$2"];
+if [ -z "$2" ];
 then
     echo "No dest"
+    exit 1
 fi
 
-echo $src_path=$(which $1)
+src_path=$(which $1)
 
-IFS='/' read -ra ADDR <<< "$2"
-for i in "${ADDR[@]}"; do
-    echo $i
+dst_path_arr=()
+IFS='/' read -ra dst_path_arr <<< $src_path
+
+
+len=${#dst_path_arr[@]}
+len=$((len - 1))
+
+dst_path=""
+for (( i = 1; i < len; i++ )); do
+    str="${str}/${dst_path_arr[$i]}"
 done
+dst_path="${str}/${2}"
+
+echo "mv $src_path $dst_path"
+mv $src_path $dst_path

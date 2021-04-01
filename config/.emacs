@@ -15,7 +15,7 @@
      ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/"))))
  '(package-selected-packages
    (quote
-    (nasm-mode markdown-mode cmake-mode flycheck-pycheckers elpy which-key use-package auto-complete string-inflection yapfify pdf-tools go-mode rust-mode sml-mode))))
+    (magit nasm-mode markdown-mode cmake-mode flycheck-pycheckers elpy which-key use-package auto-complete string-inflection yapfify pdf-tools go-mode rust-mode sml-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -435,7 +435,7 @@ Version 2016-07-20"
 (defun write-std-header ()
   (interactive)
   (goto-char (point-max))
-  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n#include <type_traits>\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
+  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n#include <type_traits>\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_ATTR    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
     asm volatile(\"\" : : \"i,r,m\"(X) : \"memory\")\n\n#define IMPOSSIBLE(X)                                                          \\
     if (X) {                                                                   \\
         __builtin_unreachable();                                               \\
@@ -461,7 +461,58 @@ Version 2016-07-20"
   (cond ((equal major-mode 'asm-mode) (call-interactively #'my-asm-tab))
         (t (call-interactively #'indent-for-tab-command))))
 
-  
+
+
+(defun my-obj-dump ()
+  (interactive)
+  (cond ((equal buffer-file-name 'nil) (message "Unable to objdump non-file"))
+        (t (let ((srcfile buffer-file-name))
+             (let ((dstfile (format "/home/noah/tmp/objdumps/%s-%s.o" (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
+               (let (return-to-position)
+                 (let ((existing-buffer (get-buffer "*objdump-result*")))
+               (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+                 (with-current-buffer #1#
+                   (setq return-to-position (point))
+                   (point-min)
+                   (erase-buffer)
+                   (asm-mode)
+                   )
+                 )
+               (call-process "gcc" nil nil "-v" "-c" srcfile "-o" dstfile)
+               (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
+               (cond ((equal existing-buffer 'nil))
+                     (t
+                      (display-buffer existing-buffer)
+                      )
+                     )               
+               (mapc
+                (lambda (win)
+                  (unless (eq (selected-window) win)
+                    (with-selected-window win
+                      (goto-char return-to-position)
+                      )
+                    )
+                  )
+                (get-buffer-window-list "*objdump-result*" nil t)
+                )
+               )
+                 )
+               )
+             )
+           )
+        )
+  )
+
+
+(global-unset-key "\C-c\C-o")
+(global-set-key "\C-c\C-o" 'my-obj-dump)
+
+
+;         (let ((cmd (format "gcc -c %s -o /home/noah/tmp/%s-%s.o" buffer-file-name (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
+ ;            (call-process cmd nil nil)))))
+                 
+;;(call-process )))
+;;(format-time-string "%Y-%m-%d-T%H-%M-%S")
 
 (defun my-asm-mode-hook ()
   ;; you can use `comment-dwim' (M-;) for this kind of behaviour anyway
@@ -478,5 +529,7 @@ Version 2016-07-20"
 
 
 (add-hook 'asm-mode-hook 'my-asm-mode-hook)
+(add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
+
 
 

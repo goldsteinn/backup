@@ -1,0 +1,5 @@
+#! /bin/bash
+
+llvm-mca -register-file-size=180 -squeue=56 -lqueue=72 --all-stats -all-views
+
+    

@@ -27,5 +27,5 @@ for (( i = 1; i < len; i++ )); do
 done
 dst_path="${str}/${2}"
 
-echo "mv $src_path $dst_path"
-mv $src_path $dst_path
+echo "sudo mv $src_path $dst_path"
+sudo mv $src_path $dst_path

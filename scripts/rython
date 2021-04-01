@@ -1,0 +1,33 @@
+#! /usr/bin/env python3
+
+import sys
+import os
+import datetime
+
+full_cmd = ""
+for i in range(1, len(sys.argv)):
+    if full_cmd != "":
+        full_cmd += " "
+    full_cmd += sys.argv[i]
+
+full_cmd = full_cmd.replace("\\n", "\n")
+
+curtime = str(datetime.datetime.now()).replace(" ", "-").replace(":",
+                                                                 "-").replace(
+                                                                     ".", "-")
+fname = "/home/noah/tmp/rythons/tmp-bython-{}".format(curtime)
+
+if os.path.exists(fname):
+    print("Error: {} Already Exists".format(fname))
+    sys.exit(-1)
+
+try:
+    f = open(fname, "w+")
+    f.write("import os;\nimport sys;\n")
+    f.write(full_cmd)
+    f.flush()
+except IOError:
+    print("Error: Unable to Create to {}".format(fname))
+    sys.exit(-1)
+
+os.system("bython {}".format(fname))
