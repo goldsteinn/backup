@@ -1,0 +1,10 @@
+[user]
+	email = goldstein.w.n@gmail.com
+	name = Noah Goldstein
+[core]
+	editor = emacs
+[sendemail]
+  smtpuser = goldstein.w.n@gmail.com
+  smtpserver = smtp.googlemail.com
+  smtpencryption = tls
+  smtpserverport = 587
