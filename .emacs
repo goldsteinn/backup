@@ -1,5 +1,5 @@
-;; Added by Package.el.  This must come before configurations of
 ;; installed packages.  Don't delete this line.  If you don't want it,
+;; Added by Package.el.  This must come before configurations of
 ;; just comment it out by adding a semicolon to the start of the line.
 ;; You may delete these explanatory comments.
 ;(package-initialize)
@@ -10,10 +10,10 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-archives
-   '(("melpa" . "http://melpa.org/packages/")
-     ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
+        '(("melpa" . "http://melpa.org/packages/")
+          ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
  '(package-selected-packages
-   '(flycheck-pycheckers yapfify which-key use-package nasm-mode markdown-mode magit elpy cmake-mode)))
+        '(lsp-grammarly grammarly flycheck-pycheckers yapfify which-key use-package nasm-mode markdown-mode magit elpy cmake-mode)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -92,7 +92,7 @@
 
 (defun default-asm-compile()
   (interactive)
-  (default-compile "gcc -static -nostartfiles -nostdlib -Wl,--build-id=none "))
+  (default-compile "gcc -static -nostartfiles -nodefaultlibs -nostdlib -Wl,--build-id=none "))
 
 
 
@@ -323,7 +323,11 @@
 (global-unset-key (kbd "\C-t"))
 (global-set-key [?\C-t] 'switch-to-buffer)
 
+(global-unset-key "\M-f")
+(global-unset-key "\M-b")
 
+(global-set-key "\M-f" 'forward-whitespace)
+(global-set-key "\M-b" 'backward-sexp)
 
 ;(add-hook 'c-mode-hook 'rtags-start-process-unless-running)
 ;(add-hook 'c++-mode-hook 'rtags-start-process-unless-running)
@@ -369,7 +373,7 @@
 (setq-default tab-width 4)
 (setq indent-line-function 'insert-tab)
 (setq c-default-style "linux") 
-(setq c-basic-offset 4) 
+(setq c-basic-offset 4)
 (c-set-offset 'comment-intro 0)
 
 ;https://emacs.stackexchange.com/questions/48500/how-to-clang-format-the-current-buffer-on-save
@@ -383,21 +387,31 @@
       (fill-region (point-min) (point-max)))))
 
 
+
 (defun clean-region()
   (interactive)
+  (whitespace-cleanup)
   (cond ((equal (cur-mode) 'c-mode) (call-interactively #'clang-format-region))
         ((equal (cur-mode) 'c++-mode) (call-interactively #'clang-format-region)) 
         ((equal (cur-mode) 'python-mode) (call-interactively #'yapfify-region))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-region))
-        (t (call-interactively #'fill-paragraph))))
+        (t (call-interactively #'fill-paragraph)))
+		
+	)
 
 (defun clean-buffer()
+  (whitespace-cleanup)
   (interactive)
   (cond ((equal (cur-mode) 'c-mode) (call-interactively #'clang-format-buffer))
         ((equal (cur-mode) 'c++-mode) (call-interactively #'clang-format-buffer)) 
         ((equal (cur-mode) 'python-mode) (call-interactively #'yapfify-buffer))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-buffer))
-        (t (call-interactively #'fill-buffer))))
+        (t (call-interactively #'fill-buffer)))
+
+	)
+(setq whitespace-space 'underline)  
+(setq whitespace-style '(face lines lines-tail trailing))
+
 
 (global-unset-key (kbd "\M-q"))
 (global-set-key (kbd "\M-q") 'clean-region)
@@ -541,7 +555,7 @@ Version 2016-07-20"
                        (asm-mode)
                        )
                      )
-                   (let ((ret (call-process "gcc" nil "*objdump-result*" "-v" "-c" srcfile "-o" dstfile)))
+                   (let ((ret (call-process "gcc" nil "*objdump-result*" "-v" "-c" "-march=native" "-O3" srcfile "-o" dstfile)))
                      (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
                                             (with-current-buffer #1#
                                               (erase-buffer)
@@ -579,6 +593,9 @@ Version 2016-07-20"
 (global-unset-key "\C-c\C-o")
 (global-set-key "\C-c\C-o" 'my-obj-dump)
 
+(global-unset-key "\C-c\C-w")
+(global-set-key "\C-c\C-w" 'whitespace-cleanup-region)
+
 
 ;         (let ((cmd (format "gcc -c %s -o /home/noah/tmp/%s-%s.o" buffer-file-name (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
  ;            (call-process cmd nil nil)))))
@@ -596,6 +613,7 @@ Version 2016-07-20"
   (local-unset-key "\C-r")
   (local-unset-key "\C-j")
   (local-set-key "\C-j" 'isearch-backward)
+;  (whitespace-mode)
   (define-key isearch-mode-map "\C-j" 'isearch-repeat-backward)
 )
 
@@ -608,3 +626,43 @@ Version 2016-07-20"
   (define-key shell-mode-map "\C-c\C-r" 'do-recompile)
   )
 (add-hook 'shell-mode-hook 'my-shell-hook)
+
+
+
+(defun my-c-mode-hook ()
+  (define-key c-mode-map "\C-c\C-o" 'my-obj-dump)
+  (define-key c-mode-map "\C-c\C-w" 'whitespace-cleanup-region)
+  )
+(add-hook 'c-mode-hook 'my-c-mode-hook)
+
+
+
+; from enberg on #emacs
+;(add-hook 'compilation-finish-functions
+;  (lambda (buf str)
+;    (if (null (string-match ".*exited abnormally.*" str))
+;        ;;no errors, make the compilation window go away in a few seconds
+;        (progn
+;(run-with-timer .25 nil
+;                      (lambda (buf)
+;                        (bury-buffer buf)
+;                        (switch-to-prev-buffer (get-buffer-window buf) 'kill))
+;                      buffer)
+;          (message "No Compilation Errors!")))))
+
+;'(display-buffer-alist '(("*compilation*" (display-buffer-in-previous-window))))
+(defun bury-compile-buffer-if-successful (buffer string)
+  "Bury a compilation buffer if succeeded without warnings "
+  (if (and
+       (string-match "compilation" (buffer-name buffer))
+       (string-match "finished" string)
+       (not
+        (with-current-buffer buffer
+          (search-forward "exited abnormally" nil t))))
+      (run-with-timer .25 nil
+                      (lambda (buf)
+                        (bury-buffer buf)
+                        (switch-to-prev-buffer (get-buffer-window buf))
+                        )
+                      buffer)))
+(add-hook 'compilation-finish-functions 'bury-compile-buffer-if-successful)
