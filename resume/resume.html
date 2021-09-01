@@ -1,0 +1,157 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html>
+        <head>
+
+                <title>Noah Goldstein | goldstein.w.n@gmail.com</title>
+                <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+
+                <meta name="keywords" content="" />
+                <meta name="description" content="" />
+
+                <link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.7.0/build/reset-fonts-grids/reset-fonts-grids.css" media="all" /> 
+                <link rel="stylesheet" type="text/css" href="resume.css" media="all" />
+                <!--        <link rel="stylesheet" type="text/css" href="printcss.css" media="all" />-->
+
+        </head>
+        <body>
+
+                <div id="doc2" class="yui-t7">
+                        <div id="inner">
+	                            
+	                            <div id="hd">
+	                                    <div class="yui-gc">
+	                                            <div class="yui-u first">
+	                                                    <h1>Noah Goldstein</h1>
+	                                                    <h2>Software Engineer</h2>
+	                                            </div>
+
+	                                            <div class="yui-u">
+	                                                    <div class="contact-info">
+
+
+		                                                        <h3><a href="mailto:goldstein.w.n@gmail.com">goldstein.w.n@gmail.com</a></h3>
+		                                                        <h3>(412)-401-5362</h3>
+	                                                    </div><!--// .contact-info -->
+	                                            </div>
+	                                    </div><!--// .yui-gc -->
+	                            </div><!--// hd -->
+
+	                            <div id="bd">
+	                                    <div id="yui-main">
+	                                            <div class="yui-b">
+
+	                                                    <div class="yui-gf">
+		                                                        <div class="yui-u first">
+		                                                                <h2>Profile</h2>
+		                                                        </div>
+		                                                        <div class="yui-u">
+		                                                                <p class="enlarge">
+		                                                                        I am a computer programmer with a primary interest and competency in low level optimization using C, C++ and x86_64 Assembly and high performance parallel algorithms and data-structures.
+		                                                                </p>
+		                                                        </div>
+	                                                    </div><!--// .yui-gf -->
+
+		                                                <div class="yui-gf">
+
+		                                                        <div class="yui-u first">
+
+		                                                                <h2>Education</h2>
+		                                                        </div>
+
+		                                                        <div class="yui-u">
+		                                                                <h2>Washington University</h2>
+		                                                                <h3>Major: Computer Science &mdash; 3.7 GPA </h3>
+                                                                        <p>TA: Computer Systems (Head TA), Operating Systems, Parallel Programming, Object Oriented Programming.</p>
+		                                                                <br>
+			                                                                    <h2>Carnegie Melon, School of Computer Science</h2>
+			                                                                    <h3>15-213 &mdash; 4.0 GPA </h3>
+			                                                                    <h4></h4>
+			                                                                    <p></p>
+			                                                                    
+
+		                                                                </div>
+		                                                        </div><!--// .yui-gf -->
+
+		                                                        <div class="yui-gf">
+		                                                                <div class="yui-u first">
+
+			                                                                    <h2>Awards</h2>
+		                                                                </div>
+
+		                                                                <div class="yui-u">
+			                                                                    <h2>Deutche Bank "Powering Progress" Case Competition Finalist</h2>
+			                                                                    <p>A case competition to devise the most effective plan for aiding a non-profit group in New York City which assisted LGBTQ youth. My team was selected as finalists and flown to New York to give our final pitch in person. </p>
+                                                                                <h2>Washington University: Outstanding Senior</h2>
+                                                                                <p>One of 10 students selected for their contributions to the department.</p>
+
+		                                                                </div>
+		                                                        </div><!--// .yui-gf -->
+		                                                        <div class="yui-gf">
+		                                                                <div class="yui-u first">
+                                                                                
+			                                                                    <h2>Research</h2>
+		                                                                </div>
+		                                                                <div class="yui-u">
+                                                                                <h2>Author: Responsive Parallelism with Futures and State</h2>
+		                                                                        <p>Wrote three benchmarks; A web proxy, email server, and job scheduler in both standard cilk and a newly developed priority scheduling cilk my team was working on. The goal of this paper was to show that with equally complex language semantics, measured both in lines of code and compile time, the priority scheduler could 1) reduce the latency on high priority tasks and 2) increase the throughput of the entire application. The paper was published in PLDI '20.</p> 
+
+		                                                                        <h2>Author: Priority Scheduler for Interactive Applications</h2>
+		                                                                        <p>Performance engineered the three benchmarks from the previous paper for both standard cilk and priority cilk. The three applications were optimized for minimizing IO latency over a TCP connection. As hoped, the benchmarks using the new priority schedulers showed significant lower latency for high priority tasks (sometimes as great as an order of magnitude) as well as higher throughput for the entire application. The paper was published in SPAA '20.</p> 
+
+		                                                                </div>
+		                                                        </div><!--// .yui-gf -->
+		                                                        <div class="yui-gf">
+		                                                                <div class="yui-u first">
+                                                                                
+			                                                                    <h2>Opensource</h2>
+		                                                                </div>
+		                                                                <div class="yui-u">
+                                                                                <h2>Glibc: x86_64 Hand Optimized Assembly String and Memory Functions</h2>
+		                                                                        <p>Entirely Rewrote: strlen-avx2.S, strlen-evex.S, strchr-avx2.S, strchr-evex.S, memchr-avx2.S, memchr-evex.S</p>
+                                                                                <p>Contributed To: memmove-vec-unaligned-erms.S (memcpy), memset-vec-unaligned-erms.S</p>
+                                                                                <p>Performance improvements range from -5% to +50% (generally around 10-20%)</p>
+
+		                                                                        <h2>Linux: Small Patch to Add New Feature to Liburing</h2>
+		                                                                        <p>Added feaute to allow file descriptors to be skipped during IORING_REGISTER_FILES_UPDATE (bulk update).</p> 
+
+		                                                                </div>
+		                                                        </div><!--// .yui-gf -->
+
+		                                                        <div class="yui-gf last">	      
+		                                                                <div class="yui-u first">
+
+		                                                                        <h2>Experience</h2>
+		                                                                </div>
+		                                                                <div class="yui-u">
+                                                                                <div class="job">
+                                                                                        <h2>Amazon Inc.</h2>
+                                                                                        <h3>Software Engineer</h3>
+                                                                                        <h4>June 2020-present</h4>
+	                                                                            </div>	                                                                        <div class="job">
+		                                                                                <h2>Q-Net Software</h2>
+		                                                                                <h3>Intern</h3>
+		                                                                                <h4>May 2019-Aug 2019</h4>
+		                                                                        </div>
+		                                                                </div>
+		                                                        </div><!--// .yui-u -->
+	                                                    </div><!--// .yui-gf -->
+
+
+
+
+	                                            </div><!--// .yui-b -->
+	                                    </div><!--// yui-main -->
+	                            </div><!--// bd -->
+
+	                            <div id="ft">
+	                                    <p>Noah Goldstein &mdash; <a href="mailto:goldstein.w.n@gmail.com">goldstein.w.n@gmail.com</a> &mdash; (412)-401-5362</p>
+	                            </div><!--// footer -->
+
+                        </div><!-- // inner -->
+
+
+                </div><!--// doc -->
+
+
+        </body>
+</html>
