@@ -10,19 +10,23 @@ esac
 
 
 export PATH="/home/noah/scripts:$PATH"
+export PATH="/home/noah/programs/pyscripts:$PATH"
 export PATH="/home/noah/.local/bin:$PATH"
+export PATH="/home/noah/programs/libraries/:$PATH"
 
+HISTCONTROL=ignoredups:erasedups
+# When the shell exits, append to the history file instead of overwriting it
+shopt -s histappend
+
+# After each command, append to the history file and reread it
+PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}history -a; history -c; history -r"
 
 # don't put duplicate lines or lines starting with space in the history.
 # See bash(1) for more options
-HISTCONTROL=ignoreboth
-
-# append to the history file, don't overwrite it
-shopt -s histappend
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=1000
-HISTFILESIZE=2000
+HISTSIZE=10000
+HISTFILESIZE=20000
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -173,6 +177,10 @@ mykill () { foo=$(pidof $1); for w in $foo; do echo $w; kill -9 $w; done; }
 gb () { go build $1; }
 hgrep ()
 {
+    history | grep "$*" | tail -n 50
+}
+fhgrep ()
+{
     history | grep "$*"
 }
 search()
@@ -196,6 +204,12 @@ sb()
     cp ~/.$new_bash ~/.$old_bash
     source ~/.bashrc
 }
+
+rwifi() { sudo service network-manager restart; }
+gshow() { git diff-tree --no-commit-id --name-only -r $1; }
+
+killx() { foo=$(pidof $1); for w in $foo; do echo $w; kill -9 $w; done; }
+foox() { todo="${@:2}"; foo=$(pidof $1); for w in $foo; do echo $w; $todo $w; done; }
 
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
@@ -225,7 +239,7 @@ function start_agent {
     echo succeeded
     chmod 600 "${SSH_ENV}"
     . "${SSH_ENV}" > /dev/null
-    /usr/bin/ssh-add ~/.ssh/id_rsa;
+    /usr/bin/ssh-add ~/.ssh/id_ed25519;
 }
 
 # Source SSH settings, if applicable
@@ -240,5 +254,10 @@ else
     start_agent;
 fi
 
-export WORKON_HOME=/home/noah/local_environments/py_envs
-export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+fpatch() { git format-patch -v $1 HEAD~$2; }
+gemail() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org $@; }
+greply() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org --in-reply-to=$@; }
+# git push --dry-run ssh://nwg@sourceware.org/git/glibc.git master:refs/heads/master
+# git push ssh://nwg@sourceware.org/git/glibc.git master:refs/heads/master
+#export WORKON_HOME=/home/noah/local_environments/py_envs
+#export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
