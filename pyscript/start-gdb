@@ -1,0 +1,89 @@
+#! /usr/bin/env python3
+
+import argparse
+import os
+
+parser = argparse.ArgumentParser(description="Wrapper for gdb")
+parser.add_argument(
+    "-d",
+    action="store",
+    default="pc/i,rdi/x,rsi/x,rdx/x,rcx/x,rax/x,r8/x,r9/x,r10/x,r11/x",
+    help="CSV of displays. /{display type}. Default is /x")
+
+parser.add_argument("-b",
+                    action="store",
+                    default=None,
+                    help="CSV of breakpoints")
+
+GDB_EXEC_FMT = "-ex '{}'"
+
+
+def display_reg(reg):
+    regname = reg
+    dtype = "x"
+    if "/" in reg:
+        regarr = reg.split("/")
+        regname = regarr[0]
+        if len(regarr) > 1:
+            dtype = regarr[1]
+        else:
+            print("Warning: \"{}\" defaulting to /x display".format(reg))
+
+    if regname == "":
+        print("Warning: Skipping empty register")
+        return ""
+    if regname[0] != "$":
+        regname = "$" + regname
+
+    return "display /{} {}".format(dtype, regname)
+
+
+def display_break(addr):
+    if addr == "":
+        print("Warning: Skipping empty break")
+        return ""
+
+    return "b {}".format(addr)
+
+
+def make_cmd(component_csv, cmd_func):
+    if component_csv is None:
+        return ""
+    component_csv = component_csv.lstrip().rstrip()
+    if component_csv == "":
+        return ""
+    components = component_csv.split(",")
+    out_components = []
+    for component in components:
+        out_components.append(GDB_EXEC_FMT.format(cmd_func(component)))
+    return " ".join(out_components)
+
+
+def display_cmd(displays):
+    return make_cmd(displays, display_reg)
+
+
+def break_cmd(breaks):
+    return make_cmd(breaks, display_break)
+
+
+def run_cmd(exe_and_args):
+    assert exe_and_args is not None, "Error: No executable"
+    assert len(exe_and_args) > 0, "Error: No executable"
+
+    exe = exe_and_args[0]
+    exe_args = "r"
+    assert exe != "", "Error: No executable"
+    if len(exe_and_args) > 1:
+        exe_args = "r {}".format(" ".join(exe_and_args[1:]))
+    return exe, GDB_EXEC_FMT.format(exe_args)
+
+
+args, unknownargs = parser.parse_known_args()
+displays = display_cmd(args.d)
+breaks = break_cmd(args.b)
+exe, exe_args = run_cmd(unknownargs)
+
+gdb_cmd = "gdb {} {} {} {}".format(exe, displays, breaks, exe_args)
+print(gdb_cmd)
+os.system(gdb_cmd)

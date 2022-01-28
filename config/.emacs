@@ -1,8 +1,8 @@
-;; Added by Package.el.  This must come before configurations of
 ;; installed packages.  Don't delete this line.  If you don't want it,
+;; Added by Package.el.  This must come before configurations of
 ;; just comment it out by adding a semicolon to the start of the line.
 ;; You may delete these explanatory comments.
-(package-initialize)
+                                        ;(package-initialize)
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -10,12 +10,10 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-archives
-   (quote
-    (("melpa" . "http://melpa.org/packages/")
-     ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/"))))
+   '(("melpa" . "http://melpa.org/packages/")
+     ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
  '(package-selected-packages
-   (quote
-    (magit nasm-mode markdown-mode cmake-mode flycheck-pycheckers elpy which-key use-package auto-complete string-inflection yapfify pdf-tools go-mode rust-mode sml-mode))))
+   '(bazel lsp-mode chess elf-mode flycheck-aspell pdf-tools racket-mode lsp-grammarly grammarly flycheck-pycheckers yapfify which-key use-package nasm-mode markdown-mode magit elpy cmake-mode)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -33,8 +31,8 @@
 (global-set-key [?\M-w] 'clipboard-kill-ring-save)
 (global-set-key [?\C-y] 'clipboard-yank)
 (global-set-key (kbd "\C-cy") '(lambda ()
-               (interactive)
-               (popup-menu 'yank-menu)))
+                                 (interactive)
+                                 (popup-menu 'yank-menu)))
 
 
 ;; (global-set-key [?\M-x 'compilegcc'] (setq compile-command "make package install"))
@@ -45,8 +43,8 @@
 (add-to-list 'display-buffer-alist
              '("^\\*shell\\*$" . (display-buffer-same-window)))
 
-;(add-to-list 'display-buffer-alist
-;             '("*RTags Diagnostics*" . (display-buffer-same-window)))
+                                        ;(add-to-list 'display-buffer-alist
+                                        ;             '("*RTags Diagnostics*" . (display-buffer-same-window)))
 
 ;; should read about elpy: https://github.com/jorgenschaefer/elpy
 (elpy-enable)
@@ -54,16 +52,27 @@
 (setq elpy-rpc-python-command "python3")
 (eval-after-load "python"
   '(progn (define-key python-mode-map (kbd "C-c C-r") nil)))
-          
 
-
+(setq python-indent-guess-indent-offset nil)
 ;;buffer menu on current buffer
 (defun close()
-    (interactive)
-    (if (equal 1 (length (frame-list)))
-        (save-buffers-kill-terminal)
-      (delete-frame))
-)
+  (interactive)
+  (if (equal 1 (length (frame-list)))
+      (save-buffers-kill-terminal)
+    (delete-frame))
+  )
+
+(defun generic-clean-buffer()
+  (interactive)
+  (let (return-to-position)
+    (setq return-to-position (point))
+    (call-interactively #'mark-whole-buffer)
+    (call-interactively #'indent-region)
+    (goto-char return-to-position)
+    )
+  (deactivate-mark)
+  (whitespace-cleanup)
+  )
 
 (defun default-make()
   (interactive)
@@ -72,30 +81,105 @@
 (defalias 'll 'do-recompile)
 (defalias 'mm 'default-make)
 
-(defun default-compile()
+(defalias 'gdif 'magit-diff-buffer-file)
+(defalias 'gdiff 'magit-diff-buffer-file)
+
+(defun replace-in-string (what with in)
+  (replace-regexp-in-string (regexp-quote what) with in nil 'literal))
+
+(defun hdr-guard-int()
+  (let ((fname0 (buffer-file-name)))
+    (let ((pos (string-match-p (regexp-quote "src/") fname0)))
+      (let ((fname1 (substring fname0 pos nil)))
+        (let ((fname2 (cond ((string-equal (substring fname1 0 1) "/") (substring fname1 1 nil))
+                            (t fname1))))          
+          (let ((fname3 (replace-in-string "/" "__" fname2)))
+            (let ((fname4 (replace-in-string "." "_" fname3)))
+              (let ((fname5 (replace-in-string "-" "_" fname4)))
+                (let ((fname6 (format "_%s_" (upcase fname5))))
+                  fname6
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+  )
+
+(defun new-hguard()
+  (interactive)
+  (insert (hdr-guard-int)))
+
+(defun new-hdr()
+  (interactive)
+  (goto-char (point-min))
+  (insert (format "#ifndef %s\n" (hdr-guard-int)))
+  (insert (format "#define %s\n\n" (hdr-guard-int)))
+  (goto-char (point-max))
+  (insert "\n\n#endif\n"))
+
+
+
+
+
+
+
+(defun default-compile(_base_command)
   (interactive)
   (setq _fname (file-name-nondirectory (buffer-name)))
   (setq _oname (file-name-base (buffer-name)))
-  (setq _base_command "g++ -O3 -std=c++17 -march=native -mtune=native ")
   (setq _command0 (concat _base_command _fname))
   (setq _command1 (concat _command0 " -o "))
   (setq _command2 (concat _command1 _oname))
   (setq compile-command _command2)
   (call-interactively #'compile))
 
+
+(defun default-cxx-compile()
+  (interactive)
+  (default-compile "g++ -O3 -std=c++17 -march=native -mtune=native "))
+
+
+(defun default-c-compile()
+  (interactive)
+  (default-compile "gcc -O3 -march=native -mtune=native "))
+
+(defun default-asm-compile()
+  (interactive)
+  (default-compile "gcc -s -static -nostartfiles -nodefaultlibs -nostdlib -Wl,--build-id=none "))
+
+
+
 (defun buffer-mode (buffer-or-string)
   "Returns the major mode associated with a buffer."
   (with-current-buffer buffer-or-string
-     major-mode))
+    major-mode))
+
+(defun cur-mode ()
+  "Returns the major mode associated with a buffer."
+  (with-current-buffer (current-buffer)
+    major-mode))
+
+
 
 (defun do-compile()
   (interactive)
-  (cond ((equal major-mode 'python-mode) (call-interactively #'elpy-check))
-(t (call-interactively #'default-compile))))
+  (cond ((equal (cur-mode) 'c-mode) (call-interactively #'default-c-compile))
+        ((equal (cur-mode) 'c++-mode) (call-interactively #'default-cxx-compile))
+        ((equal (cur-mode) 'python-mode) (call-interactively #'elpy-check))
+        ((equal (cur-mode) 'asm-mode) (call-interactively #'default-asm-compile))
+        ((equal (cur-mode) 'markdown-mode) (call-interactively #'md-render))
+        ((equal (cur-mode) 'mhtml-mode) (call-interactively #'html-render))
+        (t (call-interactively #'compile))))
+
 
 (defun do-recompile()
   (interactive)
-  (cond ((equal major-mode 'python-mode) (call-interactively #'elpy-check))
+  (cond ((equal (cur-mode) 'python-mode) (call-interactively #'elpy-check))
+        ((equal (cur-mode) 'markdown-mode) (call-interactively #'md-render))
+        ((equal (cur-mode) 'mhtml-mode) (call-interactively #'html-render))
         (t (call-interactively #'recompile))))
 
 
@@ -110,10 +194,10 @@
 (global-set-key "\C-c\C-k" 'kill-compilation)
 (global-unset-key "\C-c\C-v")
 (global-set-key "\C-c\C-v" 'do-compile)
-    
+
 (global-unset-key "\C-x\C-c")
 (global-set-key "\C-x\C-c" 'close)
-    
+
 (global-set-key "\C-x\C-b" 'buffer-menu)
 (global-set-key "\C-n" 'next-line)
 (global-set-key "\M-n" 'next-error)
@@ -124,25 +208,31 @@
 (global-set-key "\C-j" 'isearch-backward)
 (define-key isearch-mode-map "\C-j" 'isearch-repeat-backward)
 
+
+
+(defalias 'toggle-fill 'global-display-fill-column-indicator-mode)
+(global-unset-key "\C-c\C-p")
+(global-set-key "\C-c\C-p" 'toggle-fill)
+
 (setq ring-bell-function 'ignore)
 (setq package-check-signature 'nil)
-;(setq mac-command-key-is-meta 't)
+                                        ;(setq mac-command-key-is-meta 't)
 
 
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
 (normal-erase-is-backspace-mode 1)
- (add-to-list 'auto-mode-alist '("\\.dat\\'" . hexl-mode))
- ;;https://emacs.stackexchange.com/questions/31631/gray-out-preprocessor-conditionals
+(add-to-list 'auto-mode-alist '("\\.dat\\'" . hexl-mode))
+;;https://emacs.stackexchange.com/questions/31631/gray-out-preprocessor-conditionals
 
 
-(defun my-set-reg (my-reg) 
+(defun my-set-reg (my-reg)
   (interactive)
   (if mark-active
       (progn
-	(set-register my-reg (buffer-substring-no-properties (region-beginning) (region-end)))
-	(deactivate-mark)
-	)
+	    (set-register my-reg (buffer-substring-no-properties (region-beginning) (region-end)))
+	    (deactivate-mark)
+	    )
     (progn
       (set-register my-reg (buffer-substring-no-properties (point) (line-end-position)))
       (deactivate-mark)
@@ -151,7 +241,7 @@
   )
 
 
-(defun my-get-reg (my-reg) 
+(defun my-get-reg (my-reg)
   (interactive)
   (progn
     (insert (get-register my-reg))
@@ -180,89 +270,100 @@
     )
   )
 (global-set-key [?\C-7]
-		'(lambda ()
-		   (interactive)
-		   (comment-line)
-		   )
-		)
+		        '(lambda ()
+		           (interactive)
+		           (comment-line)
+		           )
+		        )
 
 (global-set-key [?\C-8]
-		'(lambda ()
-		   (interactive)
-		   (hash-line)
-		   )
-		)
+		        '(lambda ()
+		           (interactive)
+		           (hash-line)
+		           )
+		        )
 
 (global-set-key [?\C-6]
-		'(lambda ()
-		   (interactive)
-		   (dash-line)
-		   )
-		)
+		        '(lambda ()
+		           (interactive)
+		           (dash-line)
+		           )
+		        )
 
-;(setq my-reg-list '(([?\M-1] . 'r) ([?\M-2] . 't)))
+                                        ;(setq my-reg-list '(([?\M-1] . 'r) ([?\M-2] . 't)))
 
-;(mapcar '(lambda (x)
-;	   (global-set-key (car x)
-;			   (funcall (lambda (y)
-;			      (interactive)
-;			      (my-set-reg y)) (cdr x)))) my-reg-list)
-
-
-(global-set-key [?\M-1] 
-		'(lambda ()
-		   (interactive)
-		   (my-set-reg 'r)))
+                                        ;(mapcar '(lambda (x)
+                                        ;	   (global-set-key (car x)
+                                        ;			   (funcall (lambda (y)
+                                        ;			      (interactive)
+                                        ;			      (my-set-reg y)) (cdr x)))) my-reg-list)
 
 
-(global-set-key [?\C-1] 
-		'(lambda ()
-		   (interactive)
-		   (my-get-reg 'r)))
+(global-set-key [?\M-1]
+		        '(lambda ()
+		           (interactive)
+		           (my-set-reg 'r)))
 
 
-(global-set-key [?\M-2] 
-		'(lambda ()
-		   (interactive)
-		   (my-set-reg 't)))
+(global-set-key [?\C-1]
+		        '(lambda ()
+		           (interactive)
+		           (my-get-reg 'r)))
 
 
-(global-set-key [?\C-2] 
-		'(lambda ()
-		   (interactive)
-		   (my-get-reg 't)))
+(global-set-key [?\M-2]
+		        '(lambda ()
+		           (interactive)
+		           (my-set-reg 't)))
 
 
-(global-set-key [?\M-3] 
-		'(lambda ()
-		   (interactive)
-		   (my-set-reg 's)))
+(global-set-key [?\C-2]
+		        '(lambda ()
+		           (interactive)
+		           (my-get-reg 't)))
 
 
-(global-set-key [?\C-3] 
-		'(lambda ()
-		   (interactive)
-		   (my-get-reg 's)))
+(global-set-key [?\M-3]
+		        '(lambda ()
+		           (interactive)
+		           (my-set-reg 's)))
 
 
-(global-set-key [?\M-4] 
-		'(lambda ()
-		   (interactive)
-		   (my-set-reg 'y)))
+(global-set-key [?\C-3]
+		        '(lambda ()
+		           (interactive)
+		           (my-get-reg 's)))
 
 
-(global-set-key [?\C-4] 
-		'(lambda ()
-		   (interactive)
-		   (my-get-reg 'y)))
+(global-set-key [?\M-4]
+		        '(lambda ()
+		           (interactive)
+		           (my-set-reg 'y)))
+
+
+(global-set-key [?\C-4]
+		        '(lambda ()
+		           (interactive)
+		           (my-get-reg 'y)))
+
+(global-set-key [?\M-5]
+		        '(lambda ()
+		           (interactive)
+		           (my-set-reg 'a)))
+
+
+(global-set-key [?\C-5]
+		        '(lambda ()
+		           (interactive)
+		           (my-get-reg 'a)))
 
 
 
 
-    
+
 (define-key company-active-map (kbd "C-n") 'company-select-next-or-abort)
 (define-key company-active-map (kbd "C-p") 'company-select-previous-or-abort)
-    
+
 
 ;;gomode stuff
 (eval-after-load "go-mode"
@@ -278,67 +379,71 @@
 
 
 (defun for-word (beg end) ""
-  (interactive "r")
-  (save-excursion
-    (narrow-to-region beg end)
-    (goto-char beg)
-    (replace-regexp "\\([^\n]\\)\n\\([^\n]\\)" "\\1 \\2")
-    (widen)))
+       (interactive "r")
+       (save-excursion
+         (narrow-to-region beg end)
+         (goto-char beg)
+         (replace-regexp "\\([^\n]\\)\n\\([^\n]\\)" "\\1 \\2")
+         (widen)))
 
 (global-unset-key (kbd "\C-t"))
 (global-set-key [?\C-t] 'switch-to-buffer)
 
+(global-unset-key "\M-f")
+(global-unset-key "\M-b")
+
+(global-set-key "\M-f" 'forward-whitespace)
+(global-set-key "\M-b" 'backward-sexp)
+
+                                        ;(add-hook 'c-mode-hook 'rtags-start-process-unless-running)
+                                        ;(add-hook 'c++-mode-hook 'rtags-start-process-unless-running)
+                                        ;(add-hook 'objc-mode-hook 'rtags-start-process-unless-running)
+
+                                        ;(setq rtags-autostart-diagnostics t)
+                                        ;(rtags-diagnostics)
 
 
-;(add-hook 'c-mode-hook 'rtags-start-process-unless-running)
-;(add-hook 'c++-mode-hook 'rtags-start-process-unless-running)
-;(add-hook 'objc-mode-hook 'rtags-start-process-unless-running)
-
-;(setq rtags-autostart-diagnostics t)
-;(rtags-diagnostics)
 
 
 
-
-
-;(require 'package)
+                                        ;(require 'package)
 (package-initialize)
-;(require 'rtags)
-;(require 'company)
+                                        ;(require 'rtags)
+                                        ;(require 'company)
 
 
 
 
-;(add-hook 'c-mode-hook 'company-init-me)
-;(add-hook 'c++-mode-hook 'company-init-me)
-;(add-hook 'objc-mode-hook 'company-init-me)
-;(add-hook 'emacs-lisp-mode-hook 'company-init-me)
-;(add-hook 'text-mode-hook 'company-init-me)
-;(add-hook 'lisp-interaction-mode-hook 'company-init-me)
+                                        ;(add-hook 'c-mode-hook 'company-init-me)
+                                        ;(add-hook 'c++-mode-hook 'company-init-me)
+                                        ;(add-hook 'objc-mode-hook 'company-init-me)
+                                        ;(add-hook 'emacs-lisp-mode-hook 'company-init-me)
+                                        ;(add-hook 'text-mode-hook 'company-init-me)
+                                        ;(add-hook 'lisp-interaction-mode-hook 'company-init-me)
 
 ;;recompile: (byte-recompile-directory package-user-dir nil 'force)
 
 
-;(add-hook 'shell-mode '(setq company-global-modes '(not org-mode)))
+                                        ;(add-hook 'shell-mode '(setq company-global-modes '(not org-mode)))
 
 
 ;; Alias for C-c r ,
 
-;(pdf-loader-install)
-;(defalias 'pgt 'pdf-view-goto-page)
-;(defalias 'pgl 'pdf-view-goto-label)
+                                        ;(pdf-loader-install)
+                                        ;(defalias 'pgt 'pdf-view-goto-page)
+                                        ;(defalias 'pgl 'pdf-view-goto-label)
 
 
 
 (setq-default indent-tabs-mode nil)
 (setq-default tab-width 4)
 (setq indent-line-function 'insert-tab)
-(setq c-default-style "linux") 
-(setq c-basic-offset 4) 
+(setq c-default-style "linux")
+(setq c-basic-offset 4)
 (c-set-offset 'comment-intro 0)
 
-;https://emacs.stackexchange.com/questions/48500/how-to-clang-format-the-current-buffer-on-save
-(load "/usr/share/emacs/site-lisp/clang-format-10/clang-format.el")
+                                        ;https://emacs.stackexchange.com/questions/48500/how-to-clang-format-the-current-buffer-on-save
+(load "/usr/share/emacs/site-lisp/clang-format-12/clang-format.el")
 
 (defun fill-buffer()
   (interactive)
@@ -346,42 +451,77 @@
     (save-restriction
       (widen)
       (fill-region (point-min) (point-max)))))
-    
+
+
+
 (defun clean-region()
   (interactive)
-  (cond ((equal major-mode 'c-mode) (call-interactively #'clang-format-region))
-        ((equal major-mode 'c++-mode) (call-interactively #'clang-format-region)) 
-        ((equal major-mode 'python-mode) (call-interactively #'yapfify-region))
-        (t (call-interactively #'fill-buffer))))
+  (whitespace-cleanup)
+  (cond ((equal (cur-mode) 'c-mode) (call-interactively #'clang-format-region))
+        ((equal (cur-mode) 'c++-mode) (call-interactively #'clang-format-region))
+        ((equal (cur-mode) 'python-mode) (call-interactively #'yapfify-region))
+        ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-region))
+        ((equal (cur-mode) 'emacs-lisp-mode) t)
+        ((equal (cur-mode) 'cmake-mode) t)
+        ((equal (cur-mode) 'racket-mode) t)
+        (t (call-interactively #'fill-paragraph)))
+
+  )
 
 (defun clean-buffer()
+  (whitespace-cleanup)
   (interactive)
-  (cond ((equal major-mode 'c-mode) (call-interactively #'clang-format-buffer))
-        ((equal major-mode 'c++-mode) (call-interactively #'clang-format-buffer)) 
-        ((equal major-mode 'python-mode) (call-interactively #'yapfify-buffer))
-        (t (call-interactively #'fill-buffer))))
+  (cond ((equal (cur-mode) 'c-mode) (call-interactively #'clang-format-buffer))
+        ((equal (cur-mode) 'c++-mode)
+         (call-interactively #'clang-format-buffer)
+         )
+        ((equal (cur-mode) 'python-mode) (call-interactively #'yapfify-buffer))
+        ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-buffer))
+        ((equal (cur-mode) 'latex-mode) (call-interactively #'generic-clean-buffer))
+        ((equal (cur-mode) 'emacs-lisp-mode) (call-interactively #'generic-clean-buffer))
+        ((equal (cur-mode) 'cmake-mode) (call-interactively #'generic-clean-buffer))
+        ((equal (cur-mode) 'makefile-gmake-mode) t)
+        ((equal (cur-mode) 'markdown-mode) t)
+        ((equal (cur-mode) 'racket-mode) (call-interactively #'rackify-buffer))
+        (t (call-interactively #'fill-buffer)))
+  )
+
+                                        ;(defun racket-format-buffer()
+                                        ;  (interactive)
+                                        ;  (cond ((equal buffer-file-name 'nil) (message "Unable to fmt buffer"))
+                                        ;        (t (let ((srcfile buffer-file-name))
+                                        ;                (let ((ret (call-process "raco" nil nil nil srcfile))))
+                                        ;             )
+                                        ;           (call-interactively 'my-revert-buffer-noconfirm)
+                                        ;           )
+                                        ;        )
+                                        ;  )
+
+(setq whitespace-space 'underline)
+(setq whitespace-style '(face lines lines-tail trailing))
+
 
 (global-unset-key (kbd "\M-q"))
 (global-set-key (kbd "\M-q") 'clean-region)
-
+(define-key global-map "\M-q" 'clean-region)
 (global-unset-key (kbd "\C-q"))
 (global-set-key (kbd "\C-q") 'clean-buffer)
-        
+
 
 
 (set-face-attribute 'region nil :background "#FF8C00")
 
 (add-hook 'html-mode-hook
-        (lambda ()
-          ;; Default indentation is usually 2 spaces, changing to 4.
-          (set (make-local-variable 'sgml-basic-offset) 8)))
+          (lambda ()
+            ;; Default indentation is usually 2 spaces, changing to 4.
+            (set (make-local-variable 'sgml-basic-offset) 8)))
 
 ;; Cycle between snake case, camel case, etc.
-;    (require 'string-inflection)
-;    (global-set-key (kbd "C-c i") 'string-inflection-cycle)
-;    (global-set-key (kbd "C-c C") 'string-inflection-camelcase)        ;; Force to CamelCase
-;    (global-set-key (kbd "C-c L") 'string-inflection-lower-camelcase)  ;; Force to lowerCamelCase
-;    (global-set-key (kbd "C-c J") 'string-inflection-java-style-cycle) ;; Cycle through Java styles
+                                        ;    (require 'string-inflection)
+                                        ;    (global-set-key (kbd "C-c i") 'string-inflection-cycle)
+                                        ;    (global-set-key (kbd "C-c C") 'string-inflection-camelcase)        ;; Force to CamelCase
+                                        ;    (global-set-key (kbd "C-c L") 'string-inflection-lower-camelcase)  ;; Force to lowerCamelCase
+                                        ;    (global-set-key (kbd "C-c J") 'string-inflection-java-style-cycle) ;; Cycle through Java styles
 
 
 (put 'downcase-region 'disabled nil)
@@ -391,8 +531,8 @@
   "Renames current buffer and file it is visiting."
   (interactive)
   (let* ((name (buffer-name))
-        (filename (buffer-file-name))
-        (basename (file-name-nondirectory filename)))
+         (filename (buffer-file-name))
+         (basename (file-name-nondirectory filename)))
     (if (not (and filename (file-exists-p filename)))
         (error "Buffer '%s' is not visiting a file!" name)
       (let ((new-name (read-file-name "New name: " (file-name-directory filename) basename nil basename)))
@@ -405,13 +545,21 @@
           (message "File '%s' successfully renamed to '%s'"
                    name (file-name-nondirectory new-name)))))))
 
-(global-unset-key "\C-x\C-r")
-(global-set-key "\C-x\C-r" 'rename-current-buffer-file)
+(defun my-revert-buffer-noconfirm ()
+  "Call `revert-buffer' with the NOCONFIRM argument set."
+  (interactive)
+  (revert-buffer nil t))
+
+(global-unset-key "\C-x\C-u")
+(global-set-key "\C-x\C-u" 'my-revert-buffer-noconfirm)
+
+(global-unset-key "\C-x\C-n")
+(global-set-key "\C-x\C-n" 'rename-current-buffer-file)
 
 (defun revert-buffer-no-confirm ()
-    "Revert buffer without confirmation."
-    (interactive)
-    (revert-buffer :ignore-auto :noconfirm))
+  "Revert buffer without confirmation."
+  (interactive)
+  (revert-buffer :ignore-auto :noconfirm))
 (global-unset-key "\C-x\C-l")
 (global-set-key "\C-x\C-l" 'revert-buffer-no-confirm)
 
@@ -432,17 +580,47 @@ Version 2016-07-20"
       (kill-buffer (current-buffer)))))
 (defalias 'kill-file 'xah-delete-current-file-copy-to-kill-ring)
 
-(defun write-std-header ()
+(defun write-c-header ()
   (interactive)
   (goto-char (point-max))
-  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n#include <type_traits>\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_ATTR    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
-    asm volatile(\"\" : : \"i,r,m\"(X) : \"memory\")\n\n#define IMPOSSIBLE(X)                                                          \\
+  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_ATTR    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_OOE_BARRIER() asm volatile(\"lfence\" : : : \"memory\")\n#define OOE_BARRIER()          asm volatile(\"lfence\" : : :)\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
+    asm volatile(\"\" : : \"i,r,m\"(X) : \"memory\")\n\n#define _CAT(X, Y) X##Y\n#define CAT(X, Y) _CAT(X, Y)\n#define _V_TO_STR(X) #X\n#define V_TO_STR(X) _V_TO_STR(X)\n\n#define NO_LSD_RD(tmp, r) \"pop \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n#define NO_LSD_WR(tmp, r) \"push \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n\n#define IMPOSSIBLE(X)                                                          \\
+    if (X) {                                                                   \\
+        __builtin_unreachable();                                               \\
+    }\n\n#define PRINT(...) fprintf(stderr, __VA_ARGS__)\n\n\nint\nmain(int argc, char ** argv) {\n}")
+                                        ;(set-buffer-modified-p nil)
+  )
+
+(defun write-cc-header ()
+  (interactive)
+  (goto-char (point-max))
+  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n#include <type_traits>\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_ATTR    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_OOE_BARRIER() asm volatile(\"lfence\" : : : \"memory\")\n#define OOE_BARRIER()          asm volatile(\"lfence\" : : :)\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
+    asm volatile(\"\" : : \"i,r,m\"(X) : \"memory\")\n\n#define _CAT(X, Y) X##Y\n#define CAT(X, Y) _CAT(X, Y)\n#define _V_TO_STR(X) #X\n#define V_TO_STR(X) _V_TO_STR(X)\n\n#define NO_LSD_RD(tmp, r) \"pop \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n#define NO_LSD_WR(tmp, r) \"push \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n\n#define IMPOSSIBLE(X)                                                          \\
     if (X) {                                                                   \\
         __builtin_unreachable();                                               \\
     }\n\n#define PRINT(...) fprintf(stderr, __VA_ARGS__)\n\nenum timer_conf { CYCLES = 0, GETTIME = 1 };\ntemplate<timer_conf conf = GETTIME>\nstruct timer {\n    static constexpr clockid_t cid       = CLOCK_MONOTONIC;\n    static constexpr uint64_t  sec_to_ns = 1000 * 1000 * 1000;\n\n    using time_t = typename std::\n        conditional_t<conf == timer_conf::CYCLES, uint64_t, struct timespec>;\n\n    time_t tstart;\n    time_t tend;\n\n    const char * const\n    units() const {\n        if constexpr (conf == timer_conf::CYCLES) {\n            return \"cycles\";\n        }\n        else {\n            return \"ns\";\n        }\n    }\n\n    void ALWAYS_INLINE\n    start() {\n        if constexpr (conf == timer_conf::CYCLES) {\n            tstart = _rdtsc();\n        }\n        else {\n            clock_gettime(cid, &tstart);\n        }\n    }\n\n    void ALWAYS_INLINE\n    end() {\n        if constexpr (conf == timer_conf::CYCLES) {\n            tend = _rdtsc();\n        }\n        else {\n            clock_gettime(cid, &tend);\n        }\n    }\n\n    uint64_t\n    get_start() const {\n        if constexpr (conf == timer_conf::CYCLES) {\n            return tstart;\n        }\n        else {\n            return sec_to_ns * tstart.tv_sec + tstart.tv_nsec;\n        }\n    }\n    uint64_t\n    get_end() const {\n        if constexpr (conf == timer_conf::CYCLES) {\n            return tend;\n        }\n        else {\n            return sec_to_ns * tend.tv_sec + tend.tv_nsec;\n        }\n    }\n\n    uint64_t\n    dif() {\n        return get_end() - get_start();\n    }\n\n    double\n    ddif() {\n        return ((double)dif());\n    }\n\n    double\n    ddif(uint64_t n) {\n        return ddif() / ((double)n);\n    }\n\n    void\n    std_print() {\n        std_print(\"\", 1);\n    }\n\n    void\n    std_print(const char * const hdr) {\n        std_print(hdr, 1);\n    }\n\n    void\n    std_print(uint64_t n) {\n        std_print(\"\", n);\n    }\n\n    void\n    std_print(const char * const hdr, uint64_t n) {\n        if (hdr[0] == 0) {\n            fprintf(stderr, \"%.3E %s\\n\", ddif(n), units());\n        }\n        else {\n            fprintf(stderr, \"%-8s: %.3E %s\\n\", hdr, ddif(n), units());\n        }\n    }\n};\n\n\nint\nmain(int argc, char ** argv) {}\n\n")
-  (set-buffer-modified-p nil))
+                                        ;(set-buffer-modified-p nil)
+  )
 
-(defalias 'newc 'write-std-header)
+(defun write-asm-header ()
+  (interactive)
+  (goto-char (point-max))
+  (insert "	.global	_start\n")
+  (insert "	.text\n")
+  (insert "_start:\n")
+  (insert "\n"    )
+  (insert "	movl	$60, %eax\n")
+  (insert "	xorl	%edi, %edi\n")
+  (insert "	syscall"))
+
+(defun newc()
+  (interactive)
+  (cond ((equal (cur-mode) 'c-mode) (call-interactively #'write-c-header))
+        ((equal (cur-mode) 'asm-mode) (call-interactively #'write-asm-header))
+        (t (call-interactively #'write-cc-header))))
+
+
+
 
 (defun left-tab ()
   (interactive)
@@ -451,18 +629,27 @@ Version 2016-07-20"
 (defun my-asm-tab ()
   (interactive)
 
-  ; possible asm directives
-  ; \.file\\|\.text\\|.globl\\|\.cfi\\|\.type\\|\.size
+                                        ; possible asm directives
+                                        ; \.file\\|\.text\\|.globl\\|\.cfi\\|\.type\\|\.size
   (cond ((string-match-p "#\\|:" (thing-at-point 'line)) (call-interactively #'left-tab))
         (t (call-interactively #'indent-for-tab-command))))
 
 (defun my-tab()
   (interactive)
-  (cond ((equal major-mode 'asm-mode) (call-interactively #'my-asm-tab))
+  (cond ((equal (cur-mode) 'asm-mode) (call-interactively #'my-asm-tab))
         (t (call-interactively #'indent-for-tab-command))))
 
+                                        ;(defun asm-beautify ()
+                                        ;  (interactive)
+                                        ;  (cond ((equal buffer-file-name 'nil) (message "Unable beautify non-file"))
+                                        ;        (t (let ((srcfile buffer-file-name))
+                                        ;             (let ((tmpbuf (get-buffer-create "*asm-beautifier-tmp*")))
+                                        ;               (erase-buffer)
+                                        ;               (let ((ret (call-process "asm-beautifier.py" nil "*asm-beautifier-tmp*" srcfile)))
 
-
+(add-to-list 'load-path "/home/noah/.emacs.d/snippets")
+(require 'abfify)
+(require 'rackify)
 (defun my-obj-dump ()
   (interactive)
   (cond ((equal buffer-file-name 'nil) (message "Unable to objdump non-file"))
@@ -470,32 +657,41 @@ Version 2016-07-20"
              (let ((dstfile (format "/home/noah/tmp/objdumps/%s-%s.o" (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
                (let (return-to-position)
                  (let ((existing-buffer (get-buffer "*objdump-result*")))
-               (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
-                 (with-current-buffer #1#
-                   (setq return-to-position (point))
-                   (point-min)
-                   (erase-buffer)
-                   (asm-mode)
-                   )
-                 )
-               (call-process "gcc" nil nil "-v" "-c" srcfile "-o" dstfile)
-               (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
-               (cond ((equal existing-buffer 'nil))
-                     (t
-                      (display-buffer existing-buffer)
+                   (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+                     (with-current-buffer #1#
+                       (setq return-to-position (point))
+                       (point-min)
+                       (erase-buffer)
+                       (asm-mode)
+                       )
+                     )
+                   (let ((ret (call-process "gcc" nil "*objdump-result*" "-v" "-c" "-march=native" "-O3" srcfile "-o" dstfile)))
+                     (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+                                            (with-current-buffer #1#
+                                              (erase-buffer)
+                                              )
+                                            )
+                            (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
+                            )
+                           )
+                     )
+
+                   (cond ((equal existing-buffer 'nil))
+                         (t
+                          (display-buffer existing-buffer)
+                          )
+                         )
+                   (mapc
+                    (lambda (win)
+                      (unless (eq (selected-window) win)
+                        (with-selected-window win
+                          (goto-char return-to-position)
+                          )
+                        )
                       )
-                     )               
-               (mapc
-                (lambda (win)
-                  (unless (eq (selected-window) win)
-                    (with-selected-window win
-                      (goto-char return-to-position)
-                      )
+                    (get-buffer-window-list "*objdump-result*" nil t)
                     )
-                  )
-                (get-buffer-window-list "*objdump-result*" nil t)
-                )
-               )
+                   )
                  )
                )
              )
@@ -503,14 +699,21 @@ Version 2016-07-20"
         )
   )
 
+(global-unset-key "\C-c\C-d")
+(global-set-key "\C-c\C-d" 'magit-diff-buffer-file)
 
 (global-unset-key "\C-c\C-o")
 (global-set-key "\C-c\C-o" 'my-obj-dump)
+(global-unset-key "\C-x\C-o")
+(global-set-key "\C-x\C-o" 'my-obj-dump)
+
+(global-unset-key "\C-c\C-w")
+(global-set-key "\C-c\C-w" 'whitespace-cleanup-region)
 
 
-;         (let ((cmd (format "gcc -c %s -o /home/noah/tmp/%s-%s.o" buffer-file-name (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
- ;            (call-process cmd nil nil)))))
-                 
+                                        ;         (let ((cmd (format "gcc -c %s -o /home/noah/tmp/%s-%s.o" buffer-file-name (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
+                                        ;            (call-process cmd nil nil)))))
+
 ;;(call-process )))
 ;;(format-time-string "%Y-%m-%d-T%H-%M-%S")
 
@@ -524,12 +727,271 @@ Version 2016-07-20"
   (local-unset-key "\C-r")
   (local-unset-key "\C-j")
   (local-set-key "\C-j" 'isearch-backward)
+                                        ;  (whitespace-mode)
   (define-key isearch-mode-map "\C-j" 'isearch-repeat-backward)
-)
+  )
 
 
 (add-hook 'asm-mode-hook 'my-asm-mode-hook)
-(add-to-list 'auto-mode-alist '("\\.h\\'" . c++-mode))
+(add-to-list 'auto-mode-alist '("\\.h\\'" . c-mode))
 
 
+(defun my-shell-hook ()
+  (define-key shell-mode-map "\C-c\C-r" 'do-recompile)
+  (define-key shell-mode-map "\C-c\C-p" 'toggle-fill)
+
+  )
+(add-hook 'shell-mode-hook 'my-shell-hook)
+
+
+
+(defun my-c-mode-hook ()
+  (define-key c-mode-map "\C-c\C-o" 'my-obj-dump)
+  (define-key c-mode-map "\C-c\C-w" 'whitespace-cleanup-region)
+  )
+(add-hook 'c-mode-hook 'my-c-mode-hook)
+(add-to-list 'auto-mode-alist '("\\.flex\\'" . c-mode))
+(add-to-list 'auto-mode-alist '("\\.l\\'" . c-mode))
+(add-to-list 'auto-mode-alist '("\\.y\\'" . c-mode))
+
+(defun my-latex-mode-hook ()
+  (define-key latex-mode-map "\C-c\C-v" 'do-compile)
+  (define-key latex-mode-map "\C-c\C-o" 'latex-render)
+  (define-key latex-mode-map "\C-x\C-o" 'latex-render)
+  (define-key latex-mode-map "\C-c\C-r" 'do-recompile)
+  (local-unset-key "\C-j")
+  (local-set-key "\C-j" 'isearch-backward)
+                                        ;  (whitespace-mode)
+  (define-key isearch-mode-map "\C-j" 'isearch-repeat-backward)
+  )
+
+(add-hook 'latex-mode-hook 'my-latex-mode-hook)
+(add-hook 'tex-mode-hook 'my-latex-mode-hook)
+(add-hook 'TeX-mode-hook 'my-latex-mode-hook)
+(add-hook 'plain-TeX-mode-hook 'my-latex-mode-hook)
+(add-hook 'LaTeX-mode-hook 'my-latex-mode-hook)
+(add-hook 'AmS-TeX-mode-hook 'my-latex-mode-hook)
+(add-hook 'ConTeXt-mode-hook 'my-latex-mode-hook)
+(add-hook 'Texinfo-mode-hook 'my-latex-mode-hook)
+(add-hook 'docTeX-mode-hook 'my-latex-mode-hook)
+
+                                        ; from enberg on #emacs
+                                        ;(add-hook 'compilation-finish-functions
+                                        ;  (lambda (buf str)
+                                        ;    (if (null (string-match ".*exited abnormally.*" str))
+                                        ;        ;;no errors, make the compilation window go away in a few seconds
+                                        ;        (progn
+                                        ;(run-with-timer .25 nil
+                                        ;                      (lambda (buf)
+                                        ;                        (bury-buffer buf)
+                                        ;                        (switch-to-prev-buffer (get-buffer-window buf) 'kill))
+                                        ;                      buffer)
+                                        ;          (message "No Compilation Errors!")))))
+
+                                        ;'(display-buffer-alist '(("*compilation*" (display-buffer-in-previous-window))))
+(defun bury-compile-buffer-if-successful (buffer string)
+  "Bury a compilation buffer if succeeded without warnings "
+  (if (and
+       (string-match "compilation" (buffer-name buffer))
+       (string-match "finished" string)
+       (not
+        (with-current-buffer buffer
+          (search-forward "error:" nil t)))
+       (not
+        (with-current-buffer buffer
+          (search-forward "warning:" nil t)))
+       (not
+        (with-current-buffer buffer
+          (search-forward "warning," nil t)))
+       (not
+        (with-current-buffer buffer
+          (search-forward "exited abnormally" nil t))))
+      (run-with-timer .25 nil
+                      (lambda (buf)
+                        (bury-buffer buf)
+                        (switch-to-prev-buffer (get-buffer-window buf))
+                        )
+                      buffer)))
+(add-hook 'compilation-finish-functions 'bury-compile-buffer-if-successful)
+
+(defun md-render ()
+  (interactive)
+  (cond ((equal buffer-file-name 'nil) (message "Unable to render non-file"))
+        (t (let ((mdfile buffer-file-name))
+             (let ((cmd (format "display-md %s" buffer-file-name)))
+               (shell-command cmd)
+               )
+             )
+           )
+        )
+  )
+
+(defun latex-render ()
+  (interactive)
+  (cond ((equal buffer-file-name 'nil) (message "Unable to render non-file"))
+        (t (let ((latexfile buffer-file-name))
+             (let ((cmd (format "display-latex %s" buffer-file-name)))
+               (shell-command cmd)
+               )
+             )
+           )
+        )
+  )
+
+(defalias 'html-render 'md-render)
+(defun new-email ()
+  (interactive)
+  (let ((curtime (format-time-string "%Y-%m-%d-T%H-%M-%S")))
+    (let ((newf (format "/home/noah/emails/email-%s.md" curtime)))
+      (find-file-other-frame newf)
+      (goto-char (point-max))
+      (insert "\n\nBest,\n<br />\nNoah")
+      (goto-char (point-min))
+      )
+    )
+  )
+
+
+(add-hook 'git-commit-mode-hook 'turn-off-auto-fill)
+
+(setq explicit-shell-file-name "/bin/bash")
+
+(defun t-shell ()
+  (interactive)
+  (let ((default-directory "/ssh:noahg5@tyler.cs.illinois.edu:"))
+    (call-interactively #'shell)
+    ))
+
+
+(defun tt-shell ()
+  (interactive)
+  (let ((default-directory "/ssh:noahg5@linux.ews.illinois.edu|ssh:noahg5@tyler.cs.illinois.edu:"))
+    (call-interactively #'shell)
+    ))
+
+(defun m-shell ()
+  (interactive)
+  (let ((default-directory "/ssh:noahg5@miranda.cs.illinois.edu:"))
+    (call-interactively #'shell)
+    ))
+
+(defun mm-shell ()
+  (interactive)
+  (let ((default-directory "/ssh:noahg5@linux.ews.illinois.edu|ssh:noahg5@miranda.cs.illinois.edu:"))
+    (call-interactively #'shell)
+    ))
+
+(defun ews-shell ()
+  (interactive)
+  (let ((default-directory "/ssh:noahg5@linux.ews.illinois.edu:"))
+    (call-interactively #'shell)
+    ))
+
+
+(require 'flycheck-aspell)
+(add-to-list 'flycheck-checkers 'markdown-aspell-dynamic)
+(add-to-list 'flycheck-checkers 'html-aspell-dynamic)
+
+;;(add-hook 'markdown-mode-hook #'flymake-aspell-setup)
+
+(setq ispell-dictionary "english")
+(setq ispell-program-name "aspell")
+(setq ispell-silently-savep t)
+
+
+(advice-add #'ispell-pdict-save :after #'flycheck-maybe-recheck)
+(defun flycheck-maybe-recheck (_)
+  (when (bound-and-true-p flycheck-mode)
+    (flycheck-buffer)))
+
+                                        ;echo -e "*nwg\n#" | aspell -a
+
+(defun run-add-to-dict (new-word)
+  (let ((cmd (format "add_to_dict %s 0" new-word)))
+    (shell-command cmd)))
+
+(defun add-to-dict (start end)
+  (interactive "r")
+  (if (use-region-p)
+      (let ((regionp (buffer-substring start end)))
+        (run-add-to-dict regionp))
+    (run-add-to-dict (current-word))))
+
+(defun run-force-add-to-dict (new-word)
+  (let ((cmd (format "add_to_dict %s 1" new-word)))
+    (shell-command cmd)))
+
+(defun force-add-to-dict (start end)
+  (interactive "r")
+  (if (use-region-p)
+      (let ((regionp (buffer-substring start end)))
+        (run-force-add-to-dict regionp))
+    (run-force-add-to-dict (current-word))))
+
+
+(defun stats-n (start end n)
+  (if (use-region-p)
+      (let ((regionp (buffer-substring start end)))
+        (let ((cmd (format "simple-stats %s '%s'" n regionp)))
+          (let ((out (shell-command-to-string cmd)))
+            (message out)
+            )
+          )
+        )
+    )
+  )
+
+(defun stats-start (start end)
+  (interactive "r")
+  (stats-n start end "0"))
+
+(defun stats (start end)
+  (interactive "r")
+  (stats-n start end (read-number "Field: " 0)))
+
+
+(defun stats-end (start end)
+  (interactive "r")
+  (stats-n start end "-1"))
+
+
+
+(global-unset-key "\C-x\C-l")
+
+
+(eval-after-load "smerge-mode"
+  '(progn (define-key smerge-mode-map (kbd "M-n") 'smerge-next))
+  )
+(eval-after-load "smerge-mode"
+  '(progn (define-key smerge-mode-map (kbd "M-p") 'smerge-prev))
+  )
+(eval-after-load "smerge-mode"
+  '(progn (define-key smerge-mode-map (kbd "C-h") 'smerge-keep-upper))
+  )
+(eval-after-load "smerge-mode"
+  '(progn (define-key smerge-mode-map (kbd "C-l") 'smerge-keep-lower))
+  )
+
+
+(setq lsp-enable-symbol-highlighting nil)
+(setq lsp-ui-doc-enable nil)
+(setq lsp-ui-doc-show-with-cursor nil)
+(setq lsp-ui-doc-show-with-mouse nil)
+(setq lsp-lens-enable nil)
+(setq lsp-headerline-breadcrumb-enable nil)
+(setq lsp-ui-sideline-enable nil)
+(setq lsp-ui-sideline-show-code-actions nil)
+(setq lsp-ui-sideline-enable nil)
+(setq lsp-ui-sideline-show-hover nil)
+(setq lsp-modeline-code-actions-enable nil)
+(setq lsp-diagnostics-provider :none)
+(setq lsp-ui-sideline-enable nil)
+(setq lsp-ui-sideline-show-diagnostics nil)
+(setq lsp-eldoc-enable-hover nil)
+(setq lsp-modeline-diagnostics-enable nil)
+(setq lsp-signature-auto-activate nil) ;; you could manually request them via `lsp-signature-activate`
+(setq lsp-signature-render-documentation nil)
+(setq lsp-completion-provider :none)
+(setq lsp-completion-show-detail nil)
+(setq lsp-completion-show-kind nil)
 

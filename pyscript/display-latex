@@ -1,0 +1,15 @@
+#! /usr/bin/env python3
+
+import sys
+import os
+
+display_cmd = "screen -d -m google-chrome {}"
+
+assert len(sys.argv) > 1
+
+tex_file = sys.argv[1]
+assert ".tex" == tex_file[len(tex_file) - 4:]
+pdf_file = tex_file[:len(tex_file) - 4] + ".pdf"
+
+os.system(display_cmd.format(pdf_file))
+

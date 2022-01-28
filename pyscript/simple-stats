@@ -1,0 +1,63 @@
+#! /usr/bin/env python3
+
+import sys
+import statistics
+import re
+
+
+def disp_out(mean, med, gmean, stdev):
+    fmt_out = "{0:<10} -> {1:.3e}"
+    print(fmt_out.format("mean", mean))
+    print(fmt_out.format("med", med))
+    print(fmt_out.format("gmean", gmean))
+    print(fmt_out.format("stdev", stdev))
+
+
+def err_out():
+    disp_out(0.0, 0.0, 0.0, 0.0)
+
+
+if len(sys.argv) < 3:
+    print("No input!")
+    sys.exit(0)
+
+input_field = 0
+try:
+    input_field = int(sys.argv[1])
+except ValueError:
+    pass
+if input_field < 0:
+    input_field = 1000000
+
+inputs = sys.argv[2]
+inputs = inputs.replace("\n", " ")
+inputs = inputs.split()
+
+vals = []
+
+re_float = re.compile("^[-+]?[0-9]*\\.?[0-9]+([eE][-+]?[0-9]+)?")
+for potential_val in inputs:
+    try:
+        v = potential_val.split(",")
+        v = v[min(input_field, len(v) - 1)]
+
+        v = re_float.match(v)
+        if v is None:
+            continue
+
+        v = v.group()
+        v = float(v)
+        vals.append(v)
+    except ValueError:
+        pass
+
+if len(vals) == 0:
+    print("No float values!")
+    sys.exit(0)
+
+dev = 0.0
+if len(vals) > 1:
+    dev = statistics.stdev(vals)
+
+disp_out(statistics.mean(vals), statistics.median(vals),
+         statistics.geometric_mean(vals), dev)

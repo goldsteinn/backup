@@ -8,11 +8,12 @@ case $- in
     *) return;;
 esac
 
-
+export PATH="/home/noah/programs/classes/426/local/bin:$PATH"
 export PATH="/home/noah/scripts:$PATH"
 export PATH="/home/noah/programs/pyscripts:$PATH"
 export PATH="/home/noah/.local/bin:$PATH"
 export PATH="/home/noah/programs/libraries/:$PATH"
+export LD_LIBRARY_PATH="/home/noah/.local/lib/"
 
 HISTCONTROL=ignoredups:erasedups
 # When the shell exits, append to the history file instead of overwriting it
@@ -25,8 +26,8 @@ PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND$'\n'}history -a; history -c; h
 # See bash(1) for more options
 
 # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
-HISTSIZE=10000
-HISTFILESIZE=20000
+HISTSIZE=100000
+HISTFILESIZE=20000000
 
 # check the window size after each command and, if necessary,
 # update the values of LINES and COLUMNS.
@@ -98,13 +99,6 @@ fi
 
 
 
-#configure environment variables
-TFHE_PREFIX=/usr/local #the prefix where you installed tfhe
-export C_INCLUDE_PATH=$C_INCLUDE_PATH:$TFHE_PREFIX/include
-export CPLUS_INCLUDE_PATH=$CPLUS_INCLUDE_PATH:$TFHE_PREFIX/include
-export LIBRARY_PATH=$LIBRARY_PATH:$TFHE_PREFIX/lib
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$TFHE_PREFIX/lib
-#export GOROOT="/usr/lib/go-1.11"
 
 # some more ls aliases
 alias ll='ls -alF'
@@ -256,8 +250,15 @@ fi
 
 fpatch() { git format-patch -v $1 HEAD~$2; }
 gemail() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org $@; }
-greply() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org --in-reply-to=$@; }
+greply() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
+
+greply-libc() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
 # git push --dry-run ssh://nwg@sourceware.org/git/glibc.git master:refs/heads/master
 # git push ssh://nwg@sourceware.org/git/glibc.git master:refs/heads/master
 #export WORKON_HOME=/home/noah/local_environments/py_envs
 #export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+
+
+new-c-project() { git clone git@github.com:goldsteinn/c-starter.git $1 && (cd $1; git remote rm origin); }
+
+new-git-project() { git init && git remote add origin git@github.com:goldsteinn/$1.git; }

@@ -46,7 +46,7 @@
 		                                                        </div>
 		                                                        <div class="yui-u">
 		                                                                <p class="enlarge">
-		                                                                        I am a computer programmer with a primary interest and competency in low level optimization using C, C++ and x86_64 Assembly and high performance parallel algorithms and data-structures.
+		                                                                        I am a computer programmer with a primary interest and competency in low level optimization using C, C++ and x86_64 Assembly, compilers, operating systems, and high performance parallelism.
 		                                                                </p>
 		                                                        </div>
 	                                                    </div><!--// .yui-gf -->
@@ -64,14 +64,14 @@
                                                                                 <h4>2016-2020</h4>
                                                                                 </div>
 
-		                                                                <h3>Major: Computer Science &mdash; 3.7 GPA </h3>
+		                                                                <h3>Major: Computer Science</h3>
                                                                         <p>TA: Computer Systems (Head TA), Operating Systems, Parallel Programming, Object Oriented Programming.</p>
 		                                                                <br>
 			                                                                    <h2>Carnegie Melon, School of Computer Science</h2>
                                                                                 <div class="job">
                                                                                 <h4>June 2018-Aug 2018</h4>
                                                                                 </div>
-			                                                                    <h3>Intro to Computer Systems 15-213 &mdash; 4.0 GPA</h3>
+			                                                                    <h3>Intro to Computer Systems 15-213</h3>
 			                                                                    <p>Summer course.</p>
 		                                                                <br>
                                                                                 <h2>University of Illinois at Urbana-Champaign</h2>
@@ -93,7 +93,7 @@
 
 		                                                                <div class="yui-u">
 			                                                                    <h2>Deutche Bank "Powering Progress" Case Competition Finalist</h2>
-			                                                                    <p>A case competition to devise the most effective plan for aiding a non-profit group in New York City which assisted LGBTQ youth. My team was selected as finalists and flown to New York to give our final pitch in person. </p>
+			                                                                    <p>A case competition targetted at aiding the LGBTQ community. The competition was to devise the most effective plan for aiding a non-profit group in New York City which assisted LGBTQ youth. My team was selected as finalists and flown to New York to give our final pitch in person. </p>
                                                                                 <h2>Washington University: Outstanding Senior</h2>
                                                                                 <p>One of 10 students selected for their contributions to the department.</p>
 
@@ -109,7 +109,7 @@
 		                                                                        <p>Wrote three benchmarks; A web proxy, email server, and job scheduler in both standard cilk and a newly developed priority scheduling cilk my team was working on. The goal of this paper was to show that with equally complex language semantics, measured both in lines of code and compile time, the priority scheduler could 1) reduce the latency on high priority tasks and 2) increase the throughput of the entire application. The paper was published in PLDI '20.</p> 
 
 		                                                                        <h2>Author: Priority Scheduler for Interactive Applications</h2>
-		                                                                        <p>Performance engineered the three benchmarks from the previous paper for both standard cilk and priority cilk. The three applications were optimized for minimizing IO latency over a TCP connection. As hoped, the benchmarks using the new priority schedulers showed significant lower latency for high priority tasks (sometimes as great as an order of magnitude) as well as higher throughput for the entire application. The paper was published in SPAA '20.</p> 
+		                                                                        <p>Performance engineered the three benchmarks from the previous paper for both standard cilk and priority cilk. The three applications were optimized for minimizing IO latency over a TCP connection. As hoped, the benchmarks using the new priority schedulers showed significant lower latency for high priority tasks (sometimes as great as an order of magnitude) as well as higher throughput for the entire application. The paper was published in SPAA '20.</p>
 
 		                                                                </div>
 		                                                        </div><!--// .yui-gf -->
@@ -119,11 +119,11 @@
 			                                                                    <h2>Opensource</h2>
 		                                                                </div>
 		                                                                <div class="yui-u">
-                                                                                <h2>Glibc: x86_64 Hand Optimized Assembly String and Memory Functions</h2>
-		                                                                        <p>Primarily <a href="https://sourceware.org/git/?p=glibc.git&a=search&h=HEAD&st=commit&s=Noah+Goldstein">contributions</a> are to the avx2 and evex implementations of key functions including memcpy, memset, memcmp, strlen, memchr, strchr. In addition smaller changes and bug fixes include a wider variety of files and function.</p>
-                                                                                <p>Performance improvements range from -5% to +50% (generally around 10-20%)</p>
+                                                                                <h2>Glibc: x86_64 Maintainer (Developer)</h2>
+		                                                                        <p>Primarily <a href="https://sourceware.org/git/?p=glibc.git&a=search&h=cf3acd774f4c11e90cdc28192d69c60e2c02a004&st=author&s=%28goldstein%5C.w%5C.n%40gmail%5C.com%7CNoah%5CsGoldstein%29&sr=1">contributions</a> are to the AVX2 and EVEX implementations of key string/memory functions including memcpy, memset, memcmp, strlen, etc... As well, I <a href="https://www.mail-archive.com/gcc@gcc.gnu.org/msg97005.html">proposed</a> and implemented an API/ABI extension adding <a href="https://sourceware.org/git/?p=glibc.git;a=commit;h=44829b3ddb64e99e37343a0f25b2c082387d31a5">__memcmpeq</a>. My patches included API/ABI support for all targets and the optimized x86_64 implementations using the SSE2, AVX2, and EVEX. In addition, I have contributed many smaller changes and bug fixes to the project.</p>
+                                                                                <p>Performance improvements range from -5% to +50% (generally around 10-20%). When meaningful tradeoff are necessary, I backup choices with either SPEC2017 or Python3 usage profiles.</p>
 		                                                                        <h2>Linux: Small Patch to Add New Feature to Liburing</h2>
-		                                                                        <p>Small <a href="https://git.kernel.dk/cgit/liburing/log/?qt=grep&q=Noah+Goldstein">contribution</a> to add feaute allowing file descriptors to be skipped during IORING_REGISTER_FILES_UPDATE (bulk update).</p> 
+		                                                                        <p>Very small <a href="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/log/?qt=grep&q=goldstein.w.n%40gmail.com">contribution</a> to add feaute allowing file descriptors to be skipped during IORING_REGISTER_FILES_UPDATE (bulk update).</p> 
 
 		                                                                </div>
 		                                                        </div><!--// .yui-gf -->

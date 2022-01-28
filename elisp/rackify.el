@@ -1,9 +1,9 @@
-;;; yapfify.el --- (automatically) format python buffers using YAPF.
+;;; rackify.el --- (automatically) format python buffers using RACKF.
 
 ;; Copyright (C) 2016 Joris Engbers
 
 ;; Author: Joris Engbers <info@jorisengbers.nl>
-;; Homepage: https://github.com/JorisE/yapfify
+;; Homepage: https://github.com/JorisE/rackify
 ;; Version: 0.0.9
 ;; Package-Version: 20200406.830
 ;; Package-Commit: 3df4e8ce65f55fd69479b3417525ce83a2b00b45
@@ -24,38 +24,38 @@
 
 ;;; Commentary:
 ;;
-;; Yapfify uses yapf to format a Python buffer. It can be called explicitly on a
-;; certain buffer, but more conveniently, a minor-mode 'yapf-mode' is provided
-;; that turns on automatically running YAPF on a buffer before saving.
+;; Rackify uses rackf to format a Python buffer. It can be called explicitly on a
+;; certain buffer, but more conveniently, a minor-mode 'rackf-mode' is provided
+;; that turns on automatically running RACKF on a buffer before saving.
 ;;
 ;; Installation:
 ;;
-;; Add yapfify.el to your load-path.
+;; Add rackify.el to your load-path.
 ;;
 ;; To automatically format all Python buffers before saving, add the function
-;; yapf-mode to python-mode-hook:
+;; rackf-mode to python-mode-hook:
 ;;
-;; (add-hook 'python-mode-hook 'yapf-mode)
+;; (add-hook 'python-mode-hook 'rackf-mode)
 ;;
 ;;; Code:
 
 (require 'cl-lib)
 
-(defcustom yapfify-executable "yapf"
-  "Executable used to start yapf."
+(defcustom rackify-executable "raco-fmt.py"
+  "Executable used to start rackf."
   :type 'string
-  :group 'yapfify)
+  :group 'rackify)
 
-(defun yapfify-call-bin (input-buffer output-buffer start-line end-line)
-  "Call process yapf on INPUT-BUFFER saving the output to OUTPUT-BUFFER.
+(defun rackify-call-bin (input-buffer output-buffer start-line end-line)
+  "Call process rackf on INPUT-BUFFER saving the output to OUTPUT-BUFFER.
 
 Return the exit code.  START-LINE and END-LINE specify region to
 format."
   (with-current-buffer input-buffer
     (call-process-region (point-min) (point-max)
-                         yapfify-executable nil output-buffer
-                         nil "-l" (concat (number-to-string start-line) "-"
-                                           (number-to-string end-line)))))
+                         rackify-executable nil output-buffer
+                         nil (concat (number-to-string start-line) "-"
+                                     (number-to-string end-line)))))
 
 (defun get-buffer-string (buffer)
   "Return the contents of BUFFER."
@@ -63,13 +63,13 @@ format."
     (buffer-string)))
 
 ;;;###autoload
-(defun yapfify-region (beginning end)
-  "Try to yapfify the current region.
+(defun rackify-region (beginning end)
+  "Try to rackify the current region.
 
-If yapf exits with an error, the output will be shown in a help-window."
+If rackf exits with an error, the output will be shown in a help-window."
   (interactive "r")
-  (when (get-buffer "*yapfify*")
-    (kill-buffer "*yapfify*"))
+  (when (get-buffer "*rackify*")
+    (kill-buffer "*rackify*"))
   (let* ((original-buffer (current-buffer))
          (original-point (point))  ; Because we are replacing text, save-excursion does not always work.
          (buffer-windows (get-buffer-window-list original-buffer nil t))
@@ -80,47 +80,40 @@ If yapf exits with an error, the output will be shown in a help-window."
                                            (- end 1)
                                          end)))
 
-         (tmpbuf (get-buffer-create "*yapfify*"))
-         (exit-code (yapfify-call-bin original-buffer tmpbuf start-line end-line)))
+         (tmpbuf (get-buffer-create "*rackify*"))
+         (exit-code (rackify-call-bin original-buffer tmpbuf start-line end-line)))
     (deactivate-mark)
-    ;; There are three exit-codes defined for YAPF:
-    ;; 0: Exit with success (change or no change on yapf >=0.11)
+    ;; There are three exit-codes defined for RACKF:
+    ;; 0: Exit with success (change or no change on rackf >=0.11)
     ;; 1: Exit with error
     ;; 2: Exit with success and change (Backward compatibility)
     ;; anything else would be very unexpected.
-    (cond ((or (eq exit-code 0) (eq exit-code 2))
+    (cond ((equal exit-code 0)
            (with-current-buffer tmpbuf
              (copy-to-buffer original-buffer (point-min) (point-max))))
-          ((eq exit-code 1)
-           (error "Yapf failed, see %s buffer for details" (buffer-name tmpbuf))))
+          (t
+           (error "Rackf failed, see %s buffer for details" (buffer-name tmpbuf))))
     ;; Clean up tmpbuf
     (kill-buffer tmpbuf)
     ;; restore window to similar state
     (goto-char original-point)
-    (cl-mapcar 'set-window-start buffer-windows original-window-pos))) 
+    (cl-mapcar 'set-window-start buffer-windows original-window-pos)))
 
 ;;;###autoload
-(defun yapfify-buffer ()
-  "Yapfify whole buffer."
+(defun rackify-buffer ()
+  "Rackify whole buffer."
   (interactive)
-  (yapfify-region (point-min) (point-max)))
+  (rackify-region (point-min) (point-max)))
 
 ;;;###autoload
-(defun yapfify-region-or-buffer ()
-  "Yapfify the region if it is active. Otherwise, yapfify the buffer"
+(defun rackify-region-or-buffer ()
+  "Rackify the region if it is active. Otherwise, rackify the buffer"
   (interactive)
   (if (region-active-p)
-      (yapfify-region (region-beginning) (region-end))
-    (yapfify-buffer)))
+      (rackify-region (region-beginning) (region-end))
+    (rackify-buffer)))
 
-;;;###autoload
-(define-minor-mode yapf-mode
-  "Automatically run YAPF before saving."
-  :lighter " YAPF"
-  (if yapf-mode
-      (add-hook 'before-save-hook 'yapfify-buffer nil t)
-    (remove-hook 'before-save-hook 'yapfify-buffer t)))
 
-(provide 'yapfify)
+(provide 'rackify)
 
-;;; yapfify.el ends here
+;;; rackify.el ends here

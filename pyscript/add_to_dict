@@ -1,0 +1,25 @@
+#! /usr/bin/env python3
+
+import sys
+import re
+import os
+
+if len(sys.argv) != 3:
+    assert False, "Bad Usage"
+
+new_word = sys.argv[1]
+force = sys.argv[2]
+
+new_word = new_word.lstrip().rstrip().lower()
+
+if new_word == "":
+    assert False, "Refuse to add empty word"
+
+if force != "0" and force != "1":
+    assert False, "Unknown force value"
+
+if (not new_word.isalpha()) and force != "1":
+    assert False, "Refuse to add non-alpha numberic word!"
+
+cmd = "echo -e \"*{}\\n#\" | aspell -a"
+os.system(cmd)

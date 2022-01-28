@@ -1,0 +1,9 @@
+#! /usr/bin/env python3
+
+import sys
+import struct
+
+data = sys.stdin.buffer.read()
+res = struct.unpack('Q', data)[0]
+
+print("{} -> {:e}".format(res, float(res)))
