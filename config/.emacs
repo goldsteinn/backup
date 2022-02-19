@@ -13,7 +13,7 @@
    '(("melpa" . "http://melpa.org/packages/")
      ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
  '(package-selected-packages
-   '(bazel lsp-mode chess elf-mode flycheck-aspell pdf-tools racket-mode lsp-grammarly grammarly flycheck-pycheckers yapfify which-key use-package nasm-mode markdown-mode magit elpy cmake-mode)))
+   '(nav-flash lsp-ui lsp-mode bazel chess elf-mode flycheck-aspell pdf-tools racket-mode flycheck-pycheckers yapfify which-key use-package nasm-mode markdown-mode magit elpy cmake-mode)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -28,6 +28,9 @@
 ;;(global-unset-key (kbd "C-["))
 ;; kill-ring to clipboard mapping
 
+(setq global-mark-ring-max '256)
+(setq kill-ring-max '256)
+(setq initial-major-mode 'text-mode)
 (global-set-key [?\M-w] 'clipboard-kill-ring-save)
 (global-set-key [?\C-y] 'clipboard-yank)
 (global-set-key (kbd "\C-cy") '(lambda ()
@@ -74,6 +77,37 @@
   (whitespace-cleanup)
   )
 
+(defvar compiler "gcc" "Default C compiler")
+(defun set-compiler(new-compiler)
+  (setq compiler new-compiler))
+
+(defun use-clang()
+  (interactive)
+  (set-compiler "clang"))
+
+(defun use-gcc()
+  (interactive)
+  (set-compiler "gcc"))
+
+(defun which-compiler()
+  (interactive)
+  (message compiler))
+
+(defun get-c-compiler()
+  (cond ((string-equal compiler "clang") "clang")
+        (t "gcc")))
+
+(defun get-cxx-compiler()
+  (cond ((string-equal compiler "clang") "clang++")
+        (t "g++")))
+
+
+(defun get-mode-compiler()
+  (cond ((equal (cur-mode) 'c++-mode) (get-cxx-compiler))
+        (t (get-c-compiler))
+        )
+  )
+
 (defun default-make()
   (interactive)
   (setq compile-command "make -k")
@@ -92,7 +126,7 @@
     (let ((pos (string-match-p (regexp-quote "src/") fname0)))
       (let ((fname1 (substring fname0 pos nil)))
         (let ((fname2 (cond ((string-equal (substring fname1 0 1) "/") (substring fname1 1 nil))
-                            (t fname1))))          
+                            (t fname1))))
           (let ((fname3 (replace-in-string "/" "__" fname2)))
             (let ((fname4 (replace-in-string "." "_" fname3)))
               (let ((fname5 (replace-in-string "-" "_" fname4)))
@@ -128,23 +162,37 @@
 
 (defun default-compile(_base_command)
   (interactive)
-  (setq _fname (file-name-nondirectory (buffer-name)))
-  (setq _oname (file-name-base (buffer-name)))
-  (setq _command0 (concat _base_command _fname))
-  (setq _command1 (concat _command0 " -o "))
-  (setq _command2 (concat _command1 _oname))
-  (setq compile-command _command2)
-  (call-interactively #'compile))
+  (let ((_fname (file-name-nondirectory (buffer-name))))
+    (let ((_oname (file-name-base (buffer-name))))
+      (let ((_command0 (concat _base_command _fname)))
+        (let ((_command1 (concat _command0 " -o ")))
+          (let ((_command2 (concat _command1 _oname)))
+            (setq compile-command _command2)
+            (call-interactively #'compile)
+            )
+          )
+        )
+      )
+    )
+  )
 
+(defun compile-command(cc cmd)
+  (format "%s %s" cc cmd))
+
+(defun compile-c-command(cmd)
+  (compile-command (get-c-compiler) cmd))
+
+(defun compile-cxx-command(cmd)
+  (compile-command (get-cxx-compiler) cmd))
 
 (defun default-cxx-compile()
   (interactive)
-  (default-compile "g++ -O3 -std=c++17 -march=native -mtune=native "))
+  (default-compile (compile-cxx-command "-O3 -std=c++17 -march=native -mtune=native ")))
 
 
 (defun default-c-compile()
   (interactive)
-  (default-compile "gcc -O3 -march=native -mtune=native "))
+  (default-compile (compile-c-command "-O3 -march=native -mtune=native ")))
 
 (defun default-asm-compile()
   (interactive)
@@ -205,7 +253,25 @@
 
 (global-unset-key "\C-r")
 (global-unset-key "\C-j")
-(global-set-key "\C-j" 'isearch-backward)
+(global-unset-key "\C-s")
+
+(global-set-key "\C-j"
+                (lambda ()
+                  (interactive)
+                  (push-coords)
+                  (isearch-backward)
+                  )
+                )
+(global-set-key "\C-s"
+                (lambda ()
+                  (interactive)
+                  (push-coords)
+                  (isearch-forward)
+                  )
+                )
+
+
+
 (define-key isearch-mode-map "\C-j" 'isearch-repeat-backward)
 
 
@@ -283,13 +349,6 @@
 		           )
 		        )
 
-(global-set-key [?\C-6]
-		        '(lambda ()
-		           (interactive)
-		           (dash-line)
-		           )
-		        )
-
                                         ;(setq my-reg-list '(([?\M-1] . 'r) ([?\M-2] . 't)))
 
                                         ;(mapcar '(lambda (x)
@@ -358,6 +417,16 @@
 		           (my-get-reg 'a)))
 
 
+(global-set-key [?\M-6]
+		        '(lambda ()
+		           (interactive)
+		           (my-set-reg 'b)))
+
+
+(global-set-key [?\C-6]
+		        '(lambda ()
+		           (interactive)
+		           (my-get-reg 'b)))
 
 
 
@@ -444,7 +513,7 @@
 
                                         ;https://emacs.stackexchange.com/questions/48500/how-to-clang-format-the-current-buffer-on-save
 (load "/usr/share/emacs/site-lisp/clang-format-12/clang-format.el")
-
+(load "/usr/share/emacs/site-lisp/llvm-12/tablegen-mode.el")
 (defun fill-buffer()
   (interactive)
   (save-excursion
@@ -583,7 +652,7 @@ Version 2016-07-20"
 (defun write-c-header ()
   (interactive)
   (goto-char (point-max))
-  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_ATTR    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_OOE_BARRIER() asm volatile(\"lfence\" : : : \"memory\")\n#define OOE_BARRIER()          asm volatile(\"lfence\" : : :)\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
+  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_FUNC    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_OOE_BARRIER() asm volatile(\"lfence\" : : : \"memory\")\n#define OOE_BARRIER()          asm volatile(\"lfence\" : : :)\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
     asm volatile(\"\" : : \"i,r,m\"(X) : \"memory\")\n\n#define _CAT(X, Y) X##Y\n#define CAT(X, Y) _CAT(X, Y)\n#define _V_TO_STR(X) #X\n#define V_TO_STR(X) _V_TO_STR(X)\n\n#define NO_LSD_RD(tmp, r) \"pop \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n#define NO_LSD_WR(tmp, r) \"push \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n\n#define IMPOSSIBLE(X)                                                          \\
     if (X) {                                                                   \\
         __builtin_unreachable();                                               \\
@@ -594,7 +663,7 @@ Version 2016-07-20"
 (defun write-cc-header ()
   (interactive)
   (goto-char (point-max))
-  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n#include <type_traits>\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_ATTR    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_OOE_BARRIER() asm volatile(\"lfence\" : : : \"memory\")\n#define OOE_BARRIER()          asm volatile(\"lfence\" : : :)\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
+  (insert "#include <assert.h>\n#include <immintrin.h>\n#include <stdint.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <time.h>\n#include <x86intrin.h>\n#include <type_traits>\n\n#define ALWAYS_INLINE inline __attribute__((always_inline))\n#define NEVER_INLINE  __attribute__((noinline))\n#define CONST_ATTR    __attribute__((const))\n#define PURE_ATTR     __attribute__((pure))\n#define BENCH_FUNC    __attribute__((noinline, noclone, aligned(4096)))\n\n#define COMPILER_OOE_BARRIER() asm volatile(\"lfence\" : : : \"memory\")\n#define OOE_BARRIER()          asm volatile(\"lfence\" : : :)\n#define COMPILER_BARRIER() asm volatile(\"\" : : : \"memory\");\n#define COMPILER_DO_NOT_OPTIMIZE_OUT(X)                                        \\
     asm volatile(\"\" : : \"i,r,m\"(X) : \"memory\")\n\n#define _CAT(X, Y) X##Y\n#define CAT(X, Y) _CAT(X, Y)\n#define _V_TO_STR(X) #X\n#define V_TO_STR(X) _V_TO_STR(X)\n\n#define NO_LSD_RD(tmp, r) \"pop \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n#define NO_LSD_WR(tmp, r) \"push \" #tmp \"\\nmovq \" #r \", %%rsp\\n\"\n\n#define IMPOSSIBLE(X)                                                          \\
     if (X) {                                                                   \\
         __builtin_unreachable();                                               \\
@@ -650,6 +719,9 @@ Version 2016-07-20"
 (add-to-list 'load-path "/home/noah/.emacs.d/snippets")
 (require 'abfify)
 (require 'rackify)
+
+
+
 (defun my-obj-dump ()
   (interactive)
   (cond ((equal buffer-file-name 'nil) (message "Unable to objdump non-file"))
@@ -665,7 +737,7 @@ Version 2016-07-20"
                        (asm-mode)
                        )
                      )
-                   (let ((ret (call-process "gcc" nil "*objdump-result*" "-v" "-c" "-march=native" "-O3" srcfile "-o" dstfile)))
+                   (let ((ret (call-process (get-mode-compiler) nil "*objdump-result*" "-v" "-c" "-march=native" "-O3" srcfile "-o" dstfile)))
                      (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
                                             (with-current-buffer #1#
                                               (erase-buffer)
@@ -745,11 +817,27 @@ Version 2016-07-20"
 
 
 
-(defun my-c-mode-hook ()
-  (define-key c-mode-map "\C-c\C-o" 'my-obj-dump)
-  (define-key c-mode-map "\C-c\C-w" 'whitespace-cleanup-region)
+(defun common-c-hook(map)
+  (define-key map "\C-c\C-o" 'my-obj-dump)
+  (define-key map "\C-c\C-w" 'whitespace-cleanup-region)
+  (define-key map "\C-i" pop-coords)
+  (lsp-start-if-active)
   )
+
+(defun my-c-mode-hook ()
+  (common-c-hook c-mode-map)
+  )
+
+(defun my-c++-mode-hook ()
+  (common-c-hook c++-mode-map)
+  )
+
+
+
+
 (add-hook 'c-mode-hook 'my-c-mode-hook)
+(add-hook 'c++-mode-hook 'my-c++-mode-hook)
+
 (add-to-list 'auto-mode-alist '("\\.flex\\'" . c-mode))
 (add-to-list 'auto-mode-alist '("\\.l\\'" . c-mode))
 (add-to-list 'auto-mode-alist '("\\.y\\'" . c-mode))
@@ -973,6 +1061,525 @@ Version 2016-07-20"
   )
 
 
+
+(defun find-overlays-specifying (prop pos)
+  (let ((overlays (overlays-at pos))
+        found)
+    (while overlays
+      (let ((overlay (car overlays)))
+        (if (overlay-get overlay prop)
+            (setq found (cons overlay found))))
+      (setq overlays (cdr overlays)))
+    found))
+
+(defun highlight-or-dehighlight-line ()
+  (interactive)
+  (if (find-overlays-specifying
+       'line-highlight-overlay-marker
+       (line-beginning-position))
+      (remove-overlays (line-beginning-position) (+ 1 (line-end-position)))
+    (let ((overlay-highlight (make-overlay
+                              (line-beginning-position)
+                              (+ 1 (line-end-position)))))
+      (overlay-put overlay-highlight 'face '(:background "lightgreen"))
+      (overlay-put overlay-highlight 'line-highlight-overlay-marker t)
+      (run-with-timer .15 nil
+                      (lambda (region)
+                        (remove-overlays (car region) (cdr end))
+                        )
+                      ((line-beginning-position) (+ 1 (line-end-position))))
+
+      )
+    )
+  )
+
+(defun highlight-and-dehighlight-line ()
+  (interactive)
+  (let ((overlay-highlight (make-overlay
+                            (line-beginning-position)
+                            (+ 1 (line-end-position)))))
+    (overlay-put overlay-highlight 'face '(:background "lightgreen"))
+    (overlay-put overlay-highlight 'line-highlight-overlay-marker t)
+    (run-with-timer .01 nil
+                    (lambda (region)
+                      (remove-overlays (car region) (cdr region))
+                      )
+                    (cons (line-beginning-position) (+ 1 (line-end-position))))
+
+    )
+  )
+
+(defvar _lsp--sessions--active #s(hash-table size 30 data nil))
+(defvar old-win-restore-undo '())
+(defvar old-win-restore-coords '())
+(defvar old-win-restore-idx 0)
+
+(defun kill-xref ()
+  (interactive)
+  (let ((buf (get-buffer "*xref*")))
+    (if buf
+        (kill-buffer buf)
+      nil)
+    )
+  )
+(require 'nav-flash)
+
+
+(defun bury-xref ()
+  (interactive)
+  (let ((buf (get-buffer "*xref*")))
+    (if buf
+        (progn
+          (with-current-buffer buf
+            (message (format "Number of reference: %d" (/ (count-lines (point-min) (point-max)) 2)))
+            )
+          (bury-buffer buf)
+          (switch-to-prev-buffer (get-buffer-window buf)
+                                 )
+          )
+      nil)
+    )
+  )
+(defun display-xref ()
+  (interactive)
+  (let ((buf (get-buffer "*xref*")))
+    (if buf
+        (display-buffer buf)
+      )
+    (message "No xref active"))
+  )
+
+
+
+(defun flash-success(&optional timer)
+  (interactive)
+  (let ((flash-time  (if timer timer .15)))
+    (let ((lstart (line-beginning-position)))
+      (let ((lend (line-end-position)))
+        (if (eq lstart lend)
+            (nav-flash-show
+             nil
+             nil
+             '((t (:background "#7FFF00" :extend t)))
+             flash-time)
+          (nav-flash-show
+           lstart
+           (+ 1 lend)
+           '((t (:background "#7FFF00" :extend nil)))
+           flash-time)
+          )
+        )
+      )
+    )
+  )
+
+(defun flash-failure(&optional timer)
+  (interactive)
+  (let ((flash-time  (if timer timer .15)))
+    (let ((lstart (line-beginning-position)))
+      (let ((lend (line-end-position)))
+        (if (eq lstart lend)
+            (nav-flash-show
+             nil
+             nil
+             '((t (:background "#DC143C" :extend t)))
+             flash-time)
+          (nav-flash-show
+           lstart
+           (+ 1 lend)
+           '((t (:background "#DC143C" :extend nil)))
+           flash-time)
+          )
+        )
+      )
+    )
+  )
+
+(set-face-extend 'nav-flash-face t)
+(defun butfirst (li)
+  (let ((ret nil))
+    (if li
+        (if (not (eq (length li) 0))
+            (progn
+              (pop li)
+              (setq ret li)
+              )
+          nil)
+      nil)
+    ret)
+  )
+
+
+(defun -reset-coords-buf (li buf match)
+  (let ((li-out '()))
+    (dolist (coord li)
+      (when (eq (string-equal buf (car coord)) match) (push coord li-out))
+      )
+    li-out)
+  )
+
+(defun reset-coords-not-buf()
+  (interactive)
+  (setq old-win-restore-coords (-reset-coords-buf old-win-restore-coords (buffer-name) t))
+  (setq old-win-restore-undo '())
+  (setq old-win-restore-idx 0)
+  )
+
+    
+(defun reset-coords-buf()
+  (interactive)
+  (setq old-win-restore-coords (-reset-coords-buf old-win-restore-coords (buffer-name) nil))
+  (setq old-win-restore-undo '())
+  (setq old-win-restore-idx 0)
+  )
+
+(defun reset-coords ()
+  (interactive)
+  (setq old-win-restore-coords '())
+  (setq old-win-restore-undo '())
+  (setq old-win-restore-idx 0)
+  )
+
+
+(defun pop-coords ()
+  (interactive)
+  (setq old-win-restore-coords (butfirst old-win-restore-coords))
+  (setq old-win-restore-idx 0)
+  )
+
+
+(defun push-coords ()
+  (interactive)
+  (let ((buf (buffer-name)))
+    (let ((pos (point)))
+      (push (cons buf pos) old-win-restore-coords)
+      (setq old-win-restore-idx 0)
+      )
+    )
+  )
+
+
+
+
+(defun restore-to-coords(coords)
+  (let ((buf (car coords)))
+    (let ((pos (cdr coords)))
+      (if (get-buffer buf)
+          (progn
+            (switch-to-buffer buf)
+            (goto-char pos)
+            (flash-success)
+            )
+        nil)
+      )
+    )
+  )
+
+
+(defun -restore-coords-index (idx li)
+  (interactive)
+  (let ((ret nil))
+    (let ((list-len (length li)))
+      (if (not (eq list-len 0))
+          (let ((coords-idx (mod idx list-len)))
+            (let ((coords (nth coords-idx li)))
+              (if coords
+                  (progn
+                    (restore-to-coords coords)
+                    (setq ret coords)
+                    )
+                nil)
+              )
+            )
+        nil)
+      )
+    (when (not ret)
+      (progn
+        (flash-failure)
+        (message "No coordinate history")
+        )
+      )
+    ret
+    )
+  )
+
+(defun restore-coords-index (idx)
+  (interactive)
+  (-restore-coords-index idx old-win-restore-coords)
+  )
+
+(if (> 1 1) t nil)
+
+(defun restore-coords-undo ()
+  (interactive)
+  (-restore-coords-index 1 old-win-restore-undo)
+  (setq old-win-restore-undo (butfirst old-win-restore-undo))
+  )
+
+(defun restore-coords-last ()
+  (interactive)
+  (let ((prev-coords (restore-coords-index 0)))
+    (setq old-win-restore-coords (butfirst old-win-restore-coords))
+    (setq old-win-restore-idx 0)
+    (push prev-coords old-win-restore-undo)
+    (if (> (length old-win-restore-undo) 3) (pop old-win-restore-undo) nil)
+    )
+  )
+
+
+(defun restore-coords-first ()
+  (interactive)
+  (restore-coords-index (- (length old-win-restore-coords) 1))
+  (setq old-win-restore-coords (butfirst old-win-restore-coords))
+  (setq old-win-restore-idx 0)
+  )
+
+(defun restore-coords-cycle-forward ()
+  (interactive)
+  (setq old-win-restore-idx (- old-win-restore-idx 1))
+  (restore-coords-index old-win-restore-idx)
+  )
+
+(defun restore-coords-cycle-backward ()
+  (interactive)
+  (restore-coords-index old-win-restore-idx)
+  (setq old-win-restore-idx (+ old-win-restore-idx 1))
+  )
+
+                                        ;  (define-key c-mode-map "\C-c\C-o" 'my-obj-dump)
+
+(global-unset-key (kbd "C-."))
+(global-unset-key (kbd "C-0"))
+(global-unset-key (kbd "C-o"))
+(global-unset-key (kbd "C-i"))
+(global-unset-key (kbd "C--"))
+(global-unset-key (kbd "C-="))
+(global-unset-key "\C-l")
+(global-unset-key (kbd "C-;"))
+(global-unset-key (kbd "C-'"))
+
+(global-set-key (kbd "C-.") 'restore-coords-undo)
+(global-set-key (kbd "C-0") 'reset-coords)
+(global-set-key (kbd "C--") 'reset-coords-buf)
+(global-set-key (kbd "C-=") 'reset-coords-not-buf)
+(global-set-key (kbd "C-o") 'push-coords)
+(global-set-key (kbd "C-i") 'pop-coords)
+(global-set-key "\C-l" 'restore-coords-last)
+(global-set-key (kbd "C-;") 'restore-coords-cycle-backward)
+(global-set-key (kbd "C-'") 'restore-coords-cycle-forward)
+
+
+
+
+(global-set-key (kbd "\C-r\C-r")
+                (lambda ()
+                  (interactive)
+                  (push-coords)
+                  (lsp-find-definition)))
+(global-set-key (kbd "\C-r\C-t")
+                (lambda ()
+                  (interactive)
+                  (push-coords)
+                  (lsp-find-declaration)))
+
+(global-set-key "\C-r\C-x" 'display-xref)
+                                        ;(global-set-key "\C-r\C-r" 'hidden-lsp-find-references)
+
+
+(global-set-key (kbd "\C-r\C-s")
+                (lambda ()
+                  (interactive)
+                  (kill-xref)
+                  (let ((_old-win (get-buffer-window (current-buffer))))
+                    (let ((lsp-ret (lsp-find-references)))
+                      (if (not (stringp lsp-ret))
+                          (progn
+                            (push-coords)
+                            (bury-xref)
+                            (select-window _old-win)
+                            (flash-success)
+                            )
+                        (flash-failure)
+                        )
+                      )
+                    )
+                  )
+                )
+
+
+
+
+
+(defun buffer-get-lsp-workspace (buf-name)
+  (let ((ret))
+    (let ((_lsp-cur-dir (lsp-session-folders (lsp-session))))
+      (dolist (workspace _lsp-cur-dir)
+        (when (string-match-p (regexp-quote workspace) buf-name)
+          (setq ret workspace))
+
+        )
+      )
+    ret)
+  )
+
+
+
+
+(defun lsp-enable-disable-buffer (cur-workspace buf-name todo)
+  (let ((existing-buffer (get-buffer buf-name)))
+    (if existing-buffer
+        (progn
+          (let ((buf-fname (buffer-file-name existing-buffer)))
+            (if buf-fname
+                (if (string-match-p (regexp-quote cur-workspace) buf-fname)
+                    (progn
+                      (message buf-fname)
+                      (with-current-buffer existing-buffer
+                        (if (equal todo 0)
+                            (if (bound-and-true-p lsp-mode)
+                                (call-interactively #'lsp-disconnect)
+                              nil)
+                          (if (equal todo 1)
+                              (if (not (bound-and-true-p lsp-mode))
+                                  (call-interactively #'lsp)
+                                nil)
+                            (if (equal todo 2)
+                                (call-interactively #'lsp-workspace-shutdown)
+                              nil)
+                            )
+                          )
+                        )
+                      )
+                  nil)
+              nil)
+            )
+          )
+      nil)
+    )
+  )
+
+(defun test ()
+  (interactive)
+  (message (buffer-get-lsp-workspace (buffer-file-name)))
+  )
+
+(defun find-buffer-in-workspace (workspace)
+  (let ((ret nil))
+    (let ((buf-list
+           (mapcar
+            (function buffer-name)
+            (buffer-list)
+            )
+           )
+          )
+
+      (dolist (buf buf-list)
+        (let ((existing-buffer (get-buffer buf)))
+          (if existing-buffer
+              (progn
+                (let ((buf-fname (buffer-file-name existing-buffer)))
+                  (if buf-fname
+                      (if (string-match-p (regexp-quote workspace) buf-fname)
+                          (setq ret buf)
+                        nil)
+                    nil)
+                  )
+                )
+            nil)
+          )
+        )
+      )
+    ret)
+  )
+
+
+(defun lsp-act-on-workspace-buffers (cur-workspace todo)
+  (let ((buf-list
+         (mapcar
+          (function buffer-name)
+          (buffer-list)
+          )
+         )
+        )
+    (dolist (buf buf-list)
+      (message buf)
+      (lsp-enable-disable-buffer cur-workspace buf todo)
+      )
+    )
+  )
+
+
+
+(defun lsp-start ()
+  (interactive)
+  (call-interactively #'lsp)
+  (let ((cur-workspace (buffer-get-lsp-workspace (buffer-file-name))))
+    (if cur-workspace
+        (progn
+          (puthash cur-workspace t  _lsp--sessions--active)
+          (lsp-act-on-workspace-buffers cur-workspace 1)
+          )
+      nil)
+    )
+  )
+
+
+(defun lsp-stop-workspace (cur-workspace)
+  (if cur-workspace
+      (progn
+        (call-interactively #'lsp-workspace-shutdown)
+        (remhash cur-workspace  _lsp--sessions--active)
+        (lsp-act-on-workspace-buffers cur-workspace 0)
+        )
+    nil)
+  )
+(defun lsp-stop ()
+  (interactive)
+  (lsp-stop-workspace (buffer-get-lsp-workspace (buffer-file-name)))
+  )
+
+                                        ;(defun lsp-stop-all ()
+                                        ;  (interactive)
+                                        ;  (setq-local active-workspaces (hash-table-keys _lsp--sessions--active))
+                                        ;  (dolist (workspace active-workspaces)
+                                        ;    (setq-local workspace-buf (find-buffer-in-workspace workspace))
+                                        ;    (if workspace-buf
+                                        ;        (progn
+                                        ;          (message (format "Shutting down %s -> %s" workspace workspace-buf))
+                                        ;          (lsp-enable-disable-buffer workspace workspace-buf 2)
+                                        ;          )
+                                        ;      nil)
+                                        ;    (remhash workspace  _lsp--sessions--active)
+                                        ;    (lsp-act-on-workspace-buffers cur-workspace 0)
+                                        ;    )
+                                        ;  )
+
+(defun _lsp-start-if-active (buf-file-name buf-name)
+  (let ((cur-workspace (buffer-get-lsp-workspace buffer-file-name)))
+    (if cur-workspace
+        (if (gethash cur-workspace _lsp--sessions--active nil)
+            (if (not (bound-and-true-p lsp-mode))
+                (call-interactively #'lsp)
+              nil)
+          nil)
+      nil)
+    )
+  )
+
+
+(defun lsp-start-if-active ()
+  (interactive)
+  (_lsp-start-if-active (buffer-file-name) (buffer-name)))
+
+
+
+
+
+                                        ;  (setq-local cur-workspace (buffer-get-lsp-workspace (buffer-file-name)))
+
+
+
+
 (setq lsp-enable-symbol-highlighting nil)
 (setq lsp-ui-doc-enable nil)
 (setq lsp-ui-doc-show-with-cursor nil)
@@ -994,4 +1601,5 @@ Version 2016-07-20"
 (setq lsp-completion-provider :none)
 (setq lsp-completion-show-detail nil)
 (setq lsp-completion-show-kind nil)
-
+(setq lsp-enable-links nil)
+(setq lsp-keep-workspace-alive nil)
