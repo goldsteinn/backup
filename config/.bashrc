@@ -1,5 +1,5 @@
-# ~/.bashrc: executed by bash(1) for non-login shells.
 # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+# ~/.bashrc: executed by bash(1) for non-login shells.
 # for examples
 
 # If not running interactively, don't do anything
@@ -8,7 +8,6 @@ case $- in
     *) return;;
 esac
 
-export PATH="/home/noah/programs/classes/426/local/bin:$PATH"
 export PATH="/home/noah/scripts:$PATH"
 export PATH="/home/noah/programs/pyscripts:$PATH"
 export PATH="/home/noah/.local/bin:$PATH"
@@ -249,7 +248,13 @@ else
 fi
 
 fpatch() { git format-patch -v $1 HEAD~$2; }
+fpatchl() { patches=$(fpatch $1 $2); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
+
 gemail() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org $@; }
+
+gpatch-email() { patches=$(fpatch $1 $2); echo "Sending Out:"; echo "${patches}"; patch_list=$(echo ${patches} | tr '\n' ' '); gemail $patch_list; }
+
+
 greply() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
 
 greply-libc() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
@@ -258,7 +263,31 @@ greply-libc() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2};
 #export WORKON_HOME=/home/noah/local_environments/py_envs
 #export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
 
+export PYTHONPATH=$PYTHONPATH:"/home/noah/programs/pylibs"
 
 new-c-project() { git clone git@github.com:goldsteinn/c-starter.git $1 && (cd $1; git remote rm origin); }
 
 new-git-project() { git init && git remote add origin git@github.com:goldsteinn/$1.git; }
+
+set-git-fork() { base=$(basename `git rev-parse --show-toplevel`); git remote add upstream git@github.com:goldsteinn/${base}.git; }
+grep-pp() { find . -name "$1" -exec grep -i "$2" {} +; }
+
+git-commit-all() { for i in $(git diff --name-only); do git add $i; git commit -m "$(basename $i)"; done; }
+
+task-grep() { ps ax  | grep $@ | grep -v grep; }
+# expire 02/26/23
+export GITHUB_TOKEN="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"
+
+export BROWSE_PATHS="/media/noah/ext-4tb/"
+export BROWSE_HIST="/home/noah/.tmp/.browse-hist"
+
+export MY_PERF_EXEC_PATH="/home/noah/programs/libraries/perf/linux-hwe-5.13-5.13.0/debian/build/tools-perarch/tools/perf"
+
+if [ ! -z "${BASHRC_TO_RUN}" ]
+then
+    echo "Running: ${BASHRC_TO_RUN}"
+    $BASHRC_TO_RUN
+    unset BASHRC_TO_RUN
+    exit
+
+fi
