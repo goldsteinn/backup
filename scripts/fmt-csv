@@ -1,0 +1,46 @@
+#! /usr/bin/env python3
+
+import sys
+
+f = None
+if len(sys.argv) > 1:
+    if sys.argv[1] in ["help", "--help", "-h"]:
+        print("Usage: {} <file>".format(sys.argv[0]))
+        sys.exit(0)
+
+    f = open(sys.argv[1])
+else:
+    f = sys.stdin
+
+field_maxes = {}
+og_lines = []
+
+for line in f:
+    line = line.lstrip().rstrip()
+
+    og_lines.append(line)
+    if "," not in line:
+        continue
+
+    pieces = line.split(",")
+
+    for i in range(0, len(pieces)):
+        if i not in field_maxes:
+            field_maxes[i] = 0
+
+        field_maxes[i] = max(field_maxes[i],
+                             len(pieces[i].lstrip().rstrip()) + 1)
+
+for line in og_lines:
+    if "," not in line:
+        print(line)
+        continue
+
+    pieces = line.split(",")
+
+    minus = 1
+    for i in range(0, len(pieces)):
+        pieces[i] = pieces[i].lstrip().rstrip().rjust(field_maxes[i] - minus)
+        minus = 0
+
+    print(",".join(pieces))
