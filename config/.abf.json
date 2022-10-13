@@ -1,0 +1,15 @@
+{
+    "Backup_Path": "/home/noah/.tmp/asm_beautifier/",
+    "Backup": "True",
+    "Padd_Indent": "True",
+    "Init_Indent": "0",
+    "Objdump_Verify": "False",
+    "Adaptive_Indent": "False",    
+    "Width": "64",
+    "Skip_Header": "1",
+    "With_LOE": "0",
+    "Annotate_PP" : "False",
+    "Tabify_Defines" : "False",
+    "Comments" : "fmt,GNU,fill,tabs",
+    "Comment_Tabs" : "1"
+}

@@ -8,7 +8,7 @@
    '(("melpa" . "http://melpa.org/packages/")
      ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
  '(package-selected-packages
-   '(bison-mode pdf-tools flycheck-pycheckers elpy yapfify which-key use-package nasm-mode magit cmake-mode elf-mode bazel lsp-mode nav-flash go-mode))
+   '(tuareg caml ocamlformat rust-mode bison-mode pdf-tools flycheck-pycheckers elpy yapfify which-key use-package nasm-mode magit cmake-mode elf-mode bazel lsp-mode nav-flash go-mode))
  '(safe-local-variable-values
    '((ccls-initialization-options :index
                                   (:threads 6 :initialBlacklist
@@ -53,8 +53,27 @@
 (setq inhibit-startup-screen t)
 (setq elpy-rpc-python-command "python3")
 (eval-after-load "python"
-  '(progn (define-key python-mode-map (kbd "C-c C-r") nil)))
+  '(progn
+     (define-key python-mode-map (kbd "C-c C-r") nil)
+     (define-key python-mode-map (kbd "<C-return>") 'company-complete)
+     (setq company-idle-delay nil)
+     )
+  )
 
+(defun my-py-mode-hook ()
+  (setq company-idle-delay nil)
+  (company-mode 1)
+  (define-key elpy-mode-map (kbd "<C-return>") 'my-company-complete)
+  (define-key python-mode-map (kbd "<C-return>") 'my-company-complete)
+  )
+
+(defun my-elisp-mode-hook ()
+  (setq company-idle-delay nil)
+  (company-mode 1)
+  )
+
+(add-hook 'python-mode-hook 'my-py-mode-hook)
+(add-hook 'emacs-lisp-mode 'my-elisp-mode-hook)
 (setq python-indent-guess-indent-offset nil)
 ;;buffer menu on current buffer
 (defun close()
@@ -73,16 +92,21 @@
     (goto-char return-to-position)
     )
   (deactivate-mark)
-  (whitespace-cleanup)
+  (my-whitespace-cleanup)
   )
 
 
-
 (defvar compiler "gcc" "Default C compiler")
-(defvar compiler-opts-extra "" "Extra Compiler Options")
-(defvar default-objdump-opts "-O3 -march=native")
-(defvar objdump-opts default-objdump-opts)
+(defvar default-compiler-opts-extra "-DI_NO_HIDDEN_LABELS")
+(defvar compiler-opts-extra default-compiler-opts-extra)
+(defvar default-compiler-opts "-O3 -march=native -mtune=native")
+(defvar cur-compiler-opts default-compiler-opts)
 
+
+(defvar rust-compile-cmd "-C panic=abort -C target-cpu=native -C debuginfo=0 -C opt-level=3 -F warnings ")
+(defvar rust-compiler "rustc")
+(setq rust-compile-cmd "-C panic=abort -C target-cpu=native -C debuginfo=0 -C opt-level=3 -F warnings ")
+(setq rust-compiler "rustc")
 (defun -set-compiler(new-compiler)
   (setq compiler new-compiler)
   (reset-compiler-opts-extra)
@@ -98,7 +122,7 @@
 
 (defun reset-compiler-opts-extra ()
   (interactive)
-  (setq compiler-opts-extra "")
+  (setq compiler-opts-extra default-compiler-opts-extra)
   )
 
 (defun set-compiler-opts-extra()
@@ -107,16 +131,19 @@
     (setq compiler-opts-extra new-compiler-opts-extra)
     )
   )
-(defun reset-objdump-opts ()
+
+(defun reset-compiler-opts ()
   (interactive)
-  (setq objdump-opts default-objdump-opts)
+  (setq cur-compiler-opts default-compiler-opts)
   )
-(defun set-objdump-opts ()
+
+(defun set-compiler-opts()
   (interactive)
-  (let ((new-objdump-opts (read-string "Enter Compiler Flags: ")))
-    (setq objdump-opts new-objdump-opts)
+  (let ((new-compiler-opts (read-string "Enter Extra Compiler Options: ")))
+    (setq cur-compiler-opts new-compiler-opts)
     )
   )
+
 
 (defun use-clang()
   (interactive)
@@ -174,9 +201,12 @@
 
 (defun get-mode-compiler()
   (cond ((equal (cur-mode) 'c++-mode) (get-cxx-compiler))
+        ((equal (cur-mode) 'rust-mode) rust-compiler)
         (t (get-c-compiler))
         )
   )
+
+
 
 (defun default-make()
   (interactive)
@@ -190,6 +220,10 @@
 
 (defun replace-in-string (what with in)
   (replace-regexp-in-string (regexp-quote what) with in nil 'literal))
+
+(defun clean-buffer-name ()
+  (interactive)
+  (replace-in-string "/" "_" (replace-in-string ">" "_" (replace-in-string "<" "_" (replace-in-string "*" "_" (buffer-name))))))
 
 (defun hdr-guard-int()
   (let ((fname0 (buffer-file-name)))
@@ -257,12 +291,12 @@
 
 (defun default-cxx-compile()
   (interactive)
-  (default-compile (compile-cxx-command "-O3 -std=c++17 -march=native -mtune=native ")))
+  (default-compile (compile-cxx-command (concat (concat "-std=c++17 " cur-compiler-opts) " "))))
 
 
 (defun default-c-compile()
   (interactive)
-  (default-compile (compile-c-command "-O3 -march=native -mtune=native ")))
+  (default-compile (compile-c-command (concat cur-compiler-opts " "))))
 
 (defun default-asm-compile()
   (interactive)
@@ -280,6 +314,12 @@
   (with-current-buffer (current-buffer)
     major-mode))
 
+(defun default-rust-compile ()
+  (interactive)
+  (default-compile (concat rust-compiler " " rust-compile-cmd))
+  )
+
+
 
 (defun do-compile()
   (interactive)
@@ -288,6 +328,7 @@
         ((equal (cur-mode) 'c++-mode) (call-interactively #'default-cxx-compile))
         ((equal (cur-mode) 'python-mode) (call-interactively #'elpy-check))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'default-asm-compile))
+        ((equal (cur-mode) 'rust-mode) (call-interactively #'default-rust-compile))
         ((equal (cur-mode) 'markdown-mode) (call-interactively #'md-render))
         ((equal (cur-mode) 'mhtml-mode) (call-interactively #'html-render))
         (t (call-interactively #'compile))))
@@ -348,8 +389,8 @@
 
 
 (defalias 'toggle-fill 'global-display-fill-column-indicator-mode)
-(global-unset-key "\C-c\C-p")
-(global-set-key "\C-c\C-p" 'toggle-fill)
+;(global-unset-key "\C-c\C-p")
+;(global-set-key "\C-c\C-p" 'toggle-fill)
 
 (setq ring-bell-function 'ignore)
 (setq package-check-signature 'nil)
@@ -424,6 +465,7 @@
   (interactive)
   (cond ((equal (cur-mode) 'c-mode) (call-interactively #'c-comment-line))
         ((equal (cur-mode) 'c++-mode) (call-interactively #'c-comment-line))
+        ((equal (cur-mode) 'rust-mode) (call-interactively #'c-comment-line))
         ((equal (cur-mode) 'python-mode) (call-interactively #'hash-line))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'c-comment-line))
         (t (call-interactively #'hash-line))))
@@ -509,8 +551,11 @@
 		           (interactive)
 		           (my-get-reg 'b)))
 
-
-
+(setq company-idle-delay nil)
+(defun my-company-complete ()
+  (interactive)
+  (company-complete)
+  )
 (define-key company-active-map (kbd "C-n") 'company-select-next-or-abort)
 (define-key company-active-map (kbd "C-p") 'company-select-previous-or-abort)
 
@@ -542,8 +587,28 @@
 (global-unset-key "\M-f")
 (global-unset-key "\M-b")
 
-(global-set-key "\M-f" 'forward-whitespace)
-(global-set-key "\M-b" 'backward-sexp)
+
+(defun fwd-whitespace ()
+  (interactive)
+  (skip-chars-forward "^[:space:]")
+  (skip-chars-forward "[:space:]")
+  )
+(defun bkwd-whitespace ()
+  (interactive)
+  (skip-chars-backward "^[:space:]")
+  (skip-chars-backward "[:space:]")
+  )
+(global-set-key "\M-f" 'fwd-whitespace)
+(global-set-key "\M-b" 'bkwd-whitespace)
+
+
+(global-unset-key (kbd "C-."))
+(global-unset-key (kbd "C-,"))
+
+
+(global-set-key (kbd "C-.") 'fwd-whitespace)
+(global-set-key (kbd "C-,") 'bkwd-whitespace)
+
 
                                         ;(add-hook 'c-mode-hook 'rtags-start-process-unless-running)
                                         ;(add-hook 'c++-mode-hook 'rtags-start-process-unless-running)
@@ -607,13 +672,14 @@
 (defun clean-region()
   (interactive)
   (when (not (equal (cur-mode) 'shell-mode))
-    (whitespace-cleanup)
+    (my-whitespace-cleanup)
     (cond ((equal (cur-mode) 'c-mode) (call-interactively #'clang-format-region))
           ((equal (cur-mode) 'c++-mode) (call-interactively #'clang-format-region))
+          ((equal (cur-mode) 'rust-mode) (call-interactively #'rust-format-buffer))
           ((equal (cur-mode) 'python-mode) (call-interactively #'yapfify-region))
           ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-region))
           ((equal (cur-mode) 'perl-mode) (call-interactively #'perlify-region))
-          ((equal (cur-mode) 'sh-mode) (call-interactively #'whitespace-cleanup-region))
+          ((equal (cur-mode) 'sh-mode) (call-interactively #'my-whitespace-cleanup-region))
           ((equal (cur-mode) 'emacs-lisp-mode) t)
           ((equal (cur-mode) 'cmake-mode) t)
           ((equal (cur-mode) 'racket-mode) t)
@@ -622,7 +688,7 @@
   )
 
 (defun clean-buffer()
-  (whitespace-cleanup)
+  (my-whitespace-cleanup)
   (interactive)
   (when (not (equal (cur-mode) 'shell-mode))
     (cond ((equal (cur-mode) 'c-mode) (call-interactively #'clang-format-buffer))
@@ -631,6 +697,7 @@
            )
           ((equal (cur-mode) 'python-mode) (call-interactively #'yapfify-buffer))
           ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-buffer))
+          ((equal (cur-mode) 'rust-mode) (call-interactively 'rust-format-buffer))
           ((equal (cur-mode) 'perl-mode) (call-interactively #'perlify-buffer))
           ((equal (cur-mode) 'latex-mode) (call-interactively #'generic-clean-buffer))
           ((equal (cur-mode) 'emacs-lisp-mode) (call-interactively #'generic-clean-buffer))
@@ -657,6 +724,8 @@
 (setq whitespace-space 'underline)
 (setq whitespace-style '(face lines lines-tail trailing))
 
+                                        ;(global-unset-key (kbd "C-i"))
+                                        ;(global-set-key (kbd "C-i") 'sort-lines)
 
 (global-unset-key (kbd "\M-q"))
 (global-set-key (kbd "\M-q") 'clean-region)
@@ -763,6 +832,7 @@ Version 2016-07-20"
   (interactive)
   (goto-char (point-max))
   (insert "	.global	_start\n")
+  (insert "	.p2align 6\n")
   (insert "	.text\n")
   (insert "_start:\n")
   (insert "\n"    )
@@ -816,77 +886,194 @@ Version 2016-07-20"
 (require 'rackify)
 (require 'perlify)
 
+(defun my-obj-dump-c ()
+  (interactive)
+  (let ((c-compiler-args (split-s " " cur-compiler-opts)))
+    (push "-c" c-compiler-args)
+    (when (not (string-equal compiler-opts-extra ""))
+      (setq c-compiler-args (append c-compiler-args (split-s " " compiler-opts-extra)))
+      )
+    (my-obj-dump c-compiler-args ".c")
+    )
+  )
 
-(defun my-obj-dump ()
+(defun my-filter  (f args)
+  (cond ((null args) nil)
+        ((if (funcall f (car args))
+             (cons (car args) (my-filter  f (cdr args)))
+           (my-filter  f (cdr args))))))
+(defun zstring (s)
+  (> (length s) 0)
+  )
+
+(defun split-s (delim s)
+  (my-filter #'zstring (s-split delim s)
+             )
+  )
+
+
+
+
+(defun my-obj-dump-asm ()
+  (interactive)
+  (my-obj-dump (split-s " "  (concat default-compiler-opts-extra " -c ")) ".S")
+  )
+
+(defun my-obj-dump-rs ()
+  (interactive)
+  (my-obj-dump (split-s " " (concat rust-compile-cmd " --emit obj ")) ".rs")
+  )
+
+(defun copy-buffer-to-file (dst-file)
+  (interactive)
+  (if (file-exists-p dst-file)
+      (message (format "File already exists: %s" dst-file))
+
+    (append-to-file (point-min) (point-max) dst-file)
+
+    )
+  )
+
+
+;;(defun my-obj-dump (pass-compiler-args)
+;;  (interactive)
+;;  (save-some-buffers nil `(lambda () (eq (current-buffer) ,(current-buffer))))
+;;  (cond ((equal buffer-file-name 'nil) (message "Unable to objdump non-file"))
+;;        (t (let ((srcfile buffer-file-name))
+;;             (let ((dstfile (format "/home/noah/.tmp/objdumps/%s-%s.o" (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
+;;               (let (return-to-position)
+;;                 (let ((existing-buffer (get-buffer "*objdump-result*")))
+;;                   (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+;;                     (with-current-buffer #1#
+;;                       (setq return-to-position (point))
+;;                       (point-min)
+;;                       (erase-buffer)
+;;                       (asm-mode)
+;;                       )
+;;                     )
+;;                   (let ((process-args (list (get-mode-compiler) nil "*objdump-result*" t)))
+;;                     (let ((compiler-args pass-compiler-args))
+;;                       (let ((compiler-files (list srcfile "-o" dstfile)))
+;;                                        ;    (message (append compiler-args compiler-files))
+;;
+;;                         (let ((ret (apply 'call-process
+;;                                           (append process-args compiler-args compiler-files)
+;;                                           )))
+;;                           (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+;;                                                  (with-current-buffer #1#
+;;                                                    (erase-buffer)
+;;                                                    (insert (format "$> %s %s" (get-mode-compiler) compiler-args))
+;;                                                    )
+;;                                                  )
+;;
+;;                                  (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
+;;                                  )
+;;                                 )
+;;                           )
+;;
+;;                         (cond ((equal existing-buffer 'nil))
+;;                               (t
+;;                                (display-buffer existing-buffer)
+;;                                )
+;;                               )
+;;                         (mapc
+;;                          (lambda (win)
+;;                            (unless (eq (selected-window) win)
+;;                              (with-selected-window win
+;;                                (goto-char return-to-position)
+;;                                )
+;;                              )
+;;                            )
+;;                          (get-buffer-window-list "*objdump-result*" nil t)
+;;                          )
+;;                         )
+;;                       )
+;;                     )
+;;                   )
+;;                 )
+;;               )
+;;             )
+;;           )
+;;        )
+;;  )
+
+
+
+(defun my-obj-dump (pass-compiler-args ext)
   (interactive)
   (save-some-buffers nil `(lambda () (eq (current-buffer) ,(current-buffer))))
-  (cond ((equal buffer-file-name 'nil) (message "Unable to objdump non-file"))
-        (t (let ((srcfile buffer-file-name))
-             (let ((dstfile (format "/home/noah/.tmp/objdumps/%s-%s.o" (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
-               (let (return-to-position)
-                 (let ((existing-buffer (get-buffer "*objdump-result*")))
-                   (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
-                     (with-current-buffer #1#
-                       (setq return-to-position (point))
-                       (point-min)
-                       (erase-buffer)
-                       (asm-mode)
-                       )
-                     )
-                   (let ((process-args (list (get-mode-compiler) nil "*objdump-result*" t)))
-                     (let ((compiler-args (s-split " " objdump-opts)))
-                       (push "-c" compiler-args)
-                       (when (not (string-equal compiler-opts-extra ""))
-                         (setq compiler-args (append compiler-args (s-split " " compiler-opts-extra)))
-                         )
-                       (let ((compiler-files (list srcfile "-o" dstfile)))
-                         (let ((ret (apply 'call-process
-                                           (append process-args compiler-args compiler-files)
-                                           )))
-                           (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
-                                                  (with-current-buffer #1#
-                                                    (erase-buffer)
-                                                    (insert (format "$> %s %s" (get-mode-compiler) compiler-args))
-                                                    )
-                                                  )
 
-                                  (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
-                                  )
-                                 )
+  (let ((basefile (format "/home/noah/.tmp/objdumps/%s-%s.o" (clean-buffer-name) (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
+
+
+    (let ((srcfile (cond ((equal buffer-file-name 'nil) (concat basefile ext))
+                         (t (buffer-file-name)))))
+      (if (equal buffer-file-name 'nil)
+          (copy-buffer-to-file srcfile)
+        nil)
+      (let ((dstfile (concat basefile ".o")))
+        (let (return-to-position)
+          (let ((existing-buffer (get-buffer "*objdump-result*")))
+            (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+              (with-current-buffer #1#
+                (setq return-to-position (point))
+                (point-min)
+                (erase-buffer)
+                (asm-mode)
+                )
+              )
+            (let ((process-args (list (get-mode-compiler) nil "*objdump-result*" t)))
+              (let ((compiler-args pass-compiler-args))
+                (let ((compiler-files (list srcfile "-o" dstfile)))
+                                        ;    (message (append compiler-args compiler-files))
+
+                  (let ((ret (apply 'call-process
+                                    (append process-args compiler-args compiler-files)
+                                    )))
+                    (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
+                                           (with-current-buffer #1#
+                                             (erase-buffer)
+                                             (insert (format "$> %s %s" (get-mode-compiler) compiler-args))
+                                             )
+                                           )
+
+                           (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
                            )
-
-                         (cond ((equal existing-buffer 'nil))
-                               (t
-                                (display-buffer existing-buffer)
-                                )
-                               )
-                         (mapc
-                          (lambda (win)
-                            (unless (eq (selected-window) win)
-                              (with-selected-window win
-                                (goto-char return-to-position)
-                                )
-                              )
-                            )
-                          (get-buffer-window-list "*objdump-result*" nil t)
                           )
+                    )
+
+                  (cond ((equal existing-buffer 'nil))
+                        (t
+                         (display-buffer existing-buffer)
+                         )
+                        )
+                  (mapc
+                   (lambda (win)
+                     (unless (eq (selected-window) win)
+                       (with-selected-window win
+                         (goto-char return-to-position)
                          )
                        )
                      )
+                   (get-buffer-window-list "*objdump-result*" nil t)
                    )
-                 )
-               )
-             )
-           )
+                  )
+                )
+              )
+            )
+          )
         )
+      )
+    )
   )
 
 (defun do-obj-dump()
   (interactive)
-  (cond ((equal (cur-mode) 'c-mode) (call-interactively #'my-obj-dump))
-        ((equal (cur-mode) 'c++-mode) (call-interactively #'my-obj-dump))
+  (cond ((equal (cur-mode) 'c-mode) (call-interactively #'my-obj-dump-c))
+        ((equal (cur-mode) 'c++-mode) (call-interactively #'my-obj-dump-c))
         ((equal (cur-mode) 'python-mode) (call-interactively #'elpy-check))
-        ((equal (cur-mode) 'asm-mode) (call-interactively #'my-obj-dump))
+        ((equal (cur-mode) 'asm-mode) (call-interactively #'my-obj-dump-asm))
+        ((equal (cur-mode) 'rust-mode) (call-interactively #'my-obj-dump-rs))
         ((equal (cur-mode) 'markdown-mode) (call-interactively #'md-render))
         ((equal (cur-mode) 'mhtml-mode) (call-interactively #'html-render))
         (t (call-interactively #'my-obj-dump))))
@@ -900,8 +1087,19 @@ Version 2016-07-20"
 (global-unset-key "\C-x\C-o")
 (global-set-key "\C-x\C-o" 'do-obj-dump)
 
-(global-unset-key "\C-c\C-w")
-(global-set-key "\C-c\C-w" 'whitespace-cleanup-region)
+(defun my-whitespace-cleanup ()
+  (interactive)
+  (whitespace-cleanup)
+  (let ((pos (point)))
+    (goto-char (point-max))
+    (insert "\n")
+    (delete-trailing-whitespace)
+    (goto-char pos)
+    )
+  )
+
+(global-unset-key "\C-c\C-q")
+(global-set-key "\C-c\C-q" 'my-whitespace-cleanup)
 
 
                                         ;         (let ((cmd (format "gcc -c %s -o /home/noah/tmp/%s-%s.o" buffer-file-name (file-name-base buffer-file-name)  (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
@@ -911,9 +1109,22 @@ Version 2016-07-20"
 ;;(format-time-string "%Y-%m-%d-T%H-%M-%S")
 
 
- (add-hook 'text-mode-hook
-            (lambda () (electric-indent-local-mode -1)))
-  
+(add-hook 'text-mode-hook
+          (lambda () (electric-indent-local-mode -1)))
+
+(defun newline-without-break-of-line ()
+  (interactive)
+  (open-line 1)
+  (right-char))
+
+(defun delete-space ()
+  (interactive)
+  (call-interactively #'delete-char)
+  (insert " "))
+
+(global-unset-key "\C-c\C-d")
+(global-set-key "\C-c\C-d" 'delete-space)
+
 (defun my-asm-mode-hook ()
   ;; you can use `comment-dwim' (M-;) for this kind of behaviour anyway
   (local-unset-key (vector asm-comment-char))
@@ -924,6 +1135,11 @@ Version 2016-07-20"
   (local-unset-key "\C-r")
   (local-unset-key "\C-j")
   (local-set-key "\C-j" 'isearch-backward)
+  (local-unset-key (kbd "<C-return>"))
+  (local-set-key (kbd "<C-return>") 'newline-without-break-of-line)
+
+  (local-unset-key (kbd "\C-c\C-d"))
+  (local-set-key (kbd "\C-c\C-d") 'delete-space)
                                         ;  (whitespace-mode)
   (define-key isearch-mode-map "\C-j" 'isearch-repeat-backward)
   )
@@ -944,22 +1160,32 @@ Version 2016-07-20"
 
 (defun common-c-hook(map)
   (define-key map "\C-c\C-o" 'do-obj-dump)
-  (define-key map "\C-c\C-w" 'whitespace-cleanup-region)
+  (define-key map "\C-c\C-q" 'my-whitespace-cleanup)
+  (local-unset-key (kbd "\C-c\C-d"))
+  (local-set-key (kbd "\C-c\C-d") 'delete-space)
                                         ;  (init-tab)
   (lsp-start-if-active)
   )
 
+
 (defun my-c-mode-hook ()
   (common-c-hook c-mode-map)
   )
+
+
 
 (defun my-c++-mode-hook ()
   (common-c-hook c++-mode-map)
   )
 
 
+(defun my-rust-mode-hook ()
+  (common-c-hook rust-mode-map)
+  )
 
 
+
+(add-hook 'rust-mode-hook 'my-rust-mode-hook)
 (add-hook 'c-mode-hook 'my-c-mode-hook)
 (add-hook 'c++-mode-hook 'my-c++-mode-hook)
 
@@ -1087,15 +1313,15 @@ Version 2016-07-20"
   (interactive)
   (let ((host (read-string "Enter Host: ")))
     (let ((host-name (ssh-username host)))
-    (let ((ssh-home-path (concat (concat (concat "/ssh:" host) ":/home/") host-name)))
-      (let ((default-directory ssh-home-path))
-        (find-file ssh-home-path)
-        (let ((shell-name (if (get-buffer "shell") (concat "shell-" host-name) "shell")))
-          (spawn-shell shell-name)
+      (let ((ssh-home-path (concat (concat (concat "/ssh:" host) ":/home/") host-name)))
+        (let ((default-directory ssh-home-path))
+          (find-file ssh-home-path)
+          (let ((shell-name (if (get-buffer "shell") (concat "shell-" host-name) "shell")))
+            (spawn-shell shell-name)
+            )
           )
         )
       )
-    )
     )
   )
 
@@ -1575,7 +1801,7 @@ Version 2016-07-20"
 
                                         ;  (define-key c-mode-map "\C-c\C-o" 'my-obj-dump)
 (defalias 'lsp-reset 'lsp-workspace-restart)
-(global-unset-key (kbd "C-."))
+                                        ;(global-unset-key (kbd "C-."))
 (global-unset-key (kbd "C-0"))
 (global-unset-key (kbd "C-o"))
                                         ;(global-unset-key (kbd "C-i"))
@@ -1585,10 +1811,11 @@ Version 2016-07-20"
 (global-unset-key (kbd "C-;"))
 (global-unset-key (kbd "C-'"))
 
-(global-set-key (kbd "C-.") 'restore-coords-undo)
+                                        ;(global-set-key (kbd "C-.") 'restore-coords-undo)
 (global-set-key (kbd "C-0") 'reset-coords)
 (global-set-key (kbd "C--") 'reset-coords-buf)
 (global-set-key (kbd "C-=") 'reset-coords-not-buf)
+                                        ;(global-set-key (kbd "C-o") 'push-coords)
 (global-set-key (kbd "C-o") 'push-coords)
                                         ;(global-set-key (kbd "C-i") 'pop-coords)
 (global-set-key "\C-l" 'restore-coords-last)
@@ -1745,6 +1972,8 @@ Version 2016-07-20"
 (defun lsp-start ()
   (interactive)
   (call-interactively #'lsp)
+  (setq company-idle-delay nil)
+  (company-mode 1)
   (let ((cur-workspace (buffer-get-lsp-workspace (buffer-file-name))))
     (if cur-workspace
         (progn
@@ -1767,6 +1996,7 @@ Version 2016-07-20"
   )
 (defun lsp-stop ()
   (interactive)
+  (company-mode 0)
   (lsp-stop-workspace (buffer-get-lsp-workspace (buffer-file-name)))
   )
 
@@ -1792,7 +2022,9 @@ Version 2016-07-20"
       (if cur-workspace
           (if (gethash cur-workspace _lsp--sessions--active nil)
               (if (not (bound-and-true-p lsp-mode))
-                  (call-interactively #'lsp)
+                  (setq company-idle-delay nil)
+                (company-mode 1)
+                (call-interactively #'lsp)
                 nil)
             nil)
         nil)
@@ -1832,24 +2064,46 @@ Version 2016-07-20"
 (setq lsp-modeline-diagnostics-enable nil)
 (setq lsp-signature-auto-activate nil) ;; you could manually request them via `lsp-signature-activate`
 (setq lsp-signature-render-documentation nil)
-(setq lsp-completion-provider :none)
-(setq lsp-completion-show-detail nil)
-(setq lsp-completion-show-kind nil)
 (setq lsp-enable-links nil)
 (setq lsp-keep-workspace-alive nil)
 (setq lsp-enable-on-type-formatting nil)
 
+(setq lsp-completion-show-detail t)
+(setq lsp-completion-show-kind t)
+(setq lsp-completion-provider :capf)
+(setq lsp-completion-enable t)
+
+
+
+                                        ;(corfu-mode -1)
+                                        ;(lsp)
 ;; Unbind <C-i> from the TAB key and bind it to indent-region.
 ;; Since TAB and <C-i> cannot be differentiated in TTY emacs,
 ;; the workaround is to conditionally bind TAB to indent-region
 ;; when there is an active region selected.
+
+(defun tab-or-complete ()
+  (interactive)
+  (indent-for-tab-command)
+  )
+
+(defun true-tab ()
+  (interactive)
+  (insert "\t")
+  )
+
+(global-unset-key (kbd "<C-return>"))
+(global-set-key (kbd "<C-return>") 'my-company-complete)
+
+                                        ;(define-key my-keys-mode-map (kbd "<C-return>") 'my-function)
+
 (defun init-tab ()
   (if (window-system)
                                         ; IF we are not in a TTY, unbind C-i from TAB
       (progn
         (define-key input-decode-map [?\C-i] [C-i])
                                         ; ... and remap it to indent-region
-        (global-set-key (kbd "<C-i>") 'pop-coords))
+        (global-set-key (kbd "<C-i>") 'true-tab))
                                         ; ELSE IF we are in a TTY, create a replacement for TAB
     (defun my/tab-replacement (&optional START END)
       (interactive "r")
@@ -1857,7 +2111,7 @@ Version 2016-07-20"
                                         ; IF active region, use indent-region
           (indent-region START END)
                                         ; ELSE IF no active region, use default tab command
-        (indent-for-tab-command)))
+        (tab-or-complete)))
                                         ; Bind our quick-and-dirty TAB replacement to the TAB key
     (global-set-key (kbd "TAB") 'my/tab-replacement))
   )
@@ -1900,4 +2154,53 @@ Version 2016-07-20"
   )
 
 
+(defun add-word ()
+  (interactive)
+  (let ((cur-word (buffer-substring (region-beginning) (region-end))))
+    (call-process "add-word" nil nil nil cur-word)
+    )
+  )
 
+(defun include-asm-hdr ()
+  (interactive)
+  (insert "#include \"/home/noah/programs/projects/string-dev/src/asm/libc-asm-common.h\"")
+  )
+
+
+(font-lock-add-keywords 'c-mode '(("__inline" . 'font-lock-keyword-face)))
+(font-lock-add-keywords 'c++-mode '(("__inline" . 'font-lock-keyword-face)))
+
+                                        ;
+                                        ;(font-lock-add-keywords 'asm-mode '(("#^(if|endif|define|elif|ifdef|ifndef).*$" . 'font-lock-comment-face)))
+
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_adjust_cfa_offset" '(font-lock-function-name-face ((((class color)) (:foreground "DarkBlue")))))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_rel_offset" . '(font-lock-face '(:foreground "pink")))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_def_cfa_register" 'font-lock-face '(:foreground "DarkBlue"))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_restore" 'font-lock-face '(:foreground "DarkBlue"))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_restore" 'font-lock-face '(:foreground "DarkBlue"))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_endproc" 'font-lock-face '(:foreground "DarkBlue"))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_startproc" 'font-lock-face '(:foreground "DarkBlue"))))
+                                        ;(font-lock-add-keywords 'asm-mode '(("cfi_adjust_cfa_offset" 'font-lock-face '(:foreground "DarkBlue"))))
+
+
+     ;; Add opam emacs directory to you load paths:
+;     (defun opam-path (path)
+;        (let ((opam-share-dir (ignore-errors (car (process-lines "opam" "config" "var"
+;   "share")))))
+;          (concat opam-share-dir "/" path)))
+;     (add-to-list 'load-path (opam-path "emacs/site-lisp"))
+;     ;; load bap-emacs-goodies
+;     (require 'bap-mode)
+;     (require 'dot)
+
+
+(defun y-or-n-p-with-return (orig-func &rest args)
+  (let ((query-replace-map (copy-keymap query-replace-map)))
+    (define-key query-replace-map (kbd "RET") 'act)
+    (apply orig-func args)))        
+
+(advice-add 'y-or-n-p :around #'y-or-n-p-with-return)
+(setq hide-ifdef-shadow t)
+
+;;              '((list1 ONE TWO)
+;;                (list2 TWO THREE))))

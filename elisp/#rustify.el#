@@ -1,0 +1,111 @@
+;;; perlify.el --- (automatically)
+
+;; Based heavily on yapfify
+;; This file is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published
+;; by the Free Software Foundation; either version 3, or (at your
+;; option) any later version.
+;;
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+;;
+;; For a full copy of the GNU General Public License
+;; see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+;;
+;; Perlify uses perlf to perl a Python buffer. It can be called explicitly on a
+;; certain buffer, but more conveniently, a minor-mode 'perlf-mode' is provided
+;; that turns on automatically running PERLF on a buffer before saving.
+;;
+;; Installation:
+;;
+;; Add perlify.el to your load-path.
+;;
+;; To automatically perl all Python buffers before saving, add the function
+;; perlf-mode to python-mode-hook:
+;;
+;;
+;;; Code:
+
+(require 'cl-lib)
+
+(defcustom rustify-executable "rustfmt"
+  "Executable used to start rustf."
+  :type 'string
+  :group 'rustify)
+
+
+(defun rustify-call-bin (input-buffer output-buffer start-line end-line)
+  "Call process rustf on INPUT-BUFFER saving the output to OUTPUT-BUFFER.
+
+Return the exit code.  START-LINE and END-LINE specify region to
+rust."
+  (with-current-buffer input-buffer
+    (call-process-region (point-min) (point-max)
+                         rustify-executable nil output-buffer
+                         nil)))
+
+(defun get-buffer-string (buffer)
+  "Return the contents of BUFFER."
+  (with-current-buffer buffer
+    (buffer-string)))
+
+;;;###autoload
+(defun rustify-region (beginning end)
+  "Try to rustify the current region.
+
+If rustf exits with an error, the output will be shown in a help-window."
+  (interactive "r")
+  (when (get-buffer "*rustify*")
+    (kill-buffer "*rustify*"))
+  (let* ((original-buffer (current-buffer))
+         (original-point (point))  ; Because we are replacing text, save-excursion does not always work.
+         (buffer-windows (get-buffer-window-list original-buffer nil t))
+         (original-window-pos (mapcar 'window-start buffer-windows))
+         (start-line (line-number-at-pos beginning))
+         (end-line (line-number-at-pos (if (or (= (char-before end) 10)
+                                               (= (char-before end) 13))
+                                           (- end 1)
+                                         end)))
+
+         (tmpbuf (get-buffer-create "*rustify*"))
+         (exit-code (rustify-call-bin original-buffer tmpbuf start-line end-line)))
+    (deactivate-mark)
+    ;; There are three exit-codes defined for RUSTF:
+    ;; 0: Exit with success (change or no change on rustf >=0.11)
+    ;; 1: Exit with error
+    ;; 2: Exit with success and change (Backward compatibility)
+    ;; anything else would be very unexpected.
+    (cond ((equal exit-code 0)
+           (with-current-buffer tmpbuf
+             (copy-to-buffer original-buffer beginning end)))
+          (t
+           (error "Rustf failed, see %s buffer for details" (buffer-name tmpbuf))))
+    ;; Clean up tmpbuf
+    (kill-buffer tmpbuf)
+    ;; restore window to similar state
+    (goto-char original-point)
+    (cl-mapcar 'set-window-start buffer-windows original-window-pos)))
+
+;;;###autoload
+(defun rustify-buffer ()
+  "Rustify whole buffer."
+  (interactive)
+  (rustify-region (point-min) (point-max)))
+
+;;;###autoload
+(defun rustify-region-or-buffer ()
+  "Rustify the region if it is active. Otherwise, rustify the buffer"
+  (interactive)
+  (if (region-active-p)
+      (rustify-region (region-beginning) (region-end))
+    (rustify-buffer)))
+
+
+
+(provide 'rustify)
+
+;;; rustify.el ends here

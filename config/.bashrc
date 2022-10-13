@@ -12,6 +12,8 @@ export PATH="/home/noah/scripts:$PATH"
 export PATH="/home/noah/programs/pyscripts:$PATH"
 export PATH="/home/noah/.local/bin:$PATH"
 export PATH="/home/noah/programs/libraries/:$PATH"
+export PATH="/home/noah/programs/libraries/arcanist/bin/:$PATH"
+export PATH="/home/noah/programs/opensource/bap-dev/src/bap/install/bin:$PATH"
 export LD_LIBRARY_PATH="/home/noah/.local/lib/"
 
 HISTCONTROL=ignoredups:erasedups
@@ -56,12 +58,12 @@ esac
 
 if [ -n "$force_color_prompt" ]; then
     if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-	# We have color support; assume it's compliant with Ecma-48
-	# (ISO/IEC-6429). (Lack of such support is extremely rare, and such
-	# a case would tend to support setf rather than setaf.)
-	color_prompt=yes
+	    # We have color support; assume it's compliant with Ecma-48
+	    # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+	    # a case would tend to support setf rather than setaf.)
+	    color_prompt=yes
     else
-	color_prompt=
+	    color_prompt=
     fi
 fi
 
@@ -75,10 +77,10 @@ unset color_prompt force_color_prompt
 # If this is an xterm set the title to user@host:dir
 case "$TERM" in
     xterm*|rxvt*)
-	PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-	;;
+	    PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+	    ;;
     *)
-	;;
+	    ;;
 esac
 
 # enable color support of ls and also add handy aliases
@@ -122,9 +124,9 @@ fi
 # sources /etc/bash.bashrc).
 if ! shopt -oq posix; then
     if [ -f /usr/share/bash-completion/bash_completion ]; then
-	. /usr/share/bash-completion/bash_completion
+	    . /usr/share/bash-completion/bash_completion
     elif [ -f /etc/bash_completion ]; then
-	. /etc/bash_completion
+	    . /etc/bash_completion
     fi
 fi
 
@@ -207,20 +209,20 @@ foox() { todo="${@:2}"; foo=$(pidof $1); for w in $foo; do echo $w; $todo $w; do
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
 if [ 1 == 0 ]; then
-   __conda_setup="$('/home/noah/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
+    __conda_setup="$('/home/noah/anaconda3/bin/conda' 'shell.bash' 'hook' 2> /dev/null)"
 
-   if [ $? -eq 0 ]; then
-       eval "$__conda_setup"
-   else
-       if [ -f "/home/noah/anaconda3/etc/profile.d/conda.sh" ]; then
-           . "/home/noah/anaconda3/etc/profile.d/conda.sh"
-       else
-           export PATH="/home/noah/anaconda3/bin:$PATH"
-       fi
-   fi
+    if [ $? -eq 0 ]; then
+        eval "$__conda_setup"
+    else
+        if [ -f "/home/noah/anaconda3/etc/profile.d/conda.sh" ]; then
+            . "/home/noah/anaconda3/etc/profile.d/conda.sh"
+        else
+            export PATH="/home/noah/anaconda3/bin:$PATH"
+        fi
+    fi
 fi
-   unset __conda_setup
-   # <<< conda initialize <<<
+unset __conda_setup
+# <<< conda initialize <<<
 
 
 
@@ -247,10 +249,15 @@ else
     start_agent;
 fi
 
-fpatch() { git format-patch -v $1 HEAD~$2; }
-fpatchl() { patches=$(fpatch $1 $2); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
+fpatch() { git format-patch -v $1 HEAD~$2 "${@:3}"; }
+fpatchl() { patches=$(fpatch $1 $2 "${@:3}"); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
+
+fpatch-range() { git format-patch -v $1 HEAD~$2..HEAD~$3 "${@:4}"; }
+fpatchl-range() { patches=$(fpatch $1 $2 $3 "${@:4}"); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
 
 gemail() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org $@; }
+
+git-email() { git send-email --cc goldstein.w.n@gmail.com --to $@; }
 
 gpatch-email() { patches=$(fpatch $1 $2); echo "Sending Out:"; echo "${patches}"; patch_list=$(echo ${patches} | tr '\n' ' '); gemail $patch_list; }
 
@@ -291,3 +298,46 @@ then
     exit
 
 fi
+
+
+libc-xcheck-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j3 --silent; make -j3 xcheck --silent); }
+
+libc-check-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j7 --silent; make -j7 check --silent); }
+
+libc-build-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j3 --silent;); }
+
+libc-build-fresh-nm() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr --disable-multi-arch; make -j3 --silent;); }
+
+
+
+libc-build-fresh-nm-isa() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr --disable-multi-arch CC="gcc -march=$1"; CXX="g++ -march=$1"; make -j3 --silent;); }
+
+libc-build-fresh-m32() { rm -rf build; mkdir -p build/glibc; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure CC="gcc -m32" CXX="g++ -m32" --prefix=/usr --build=i686-pc-linux-gnu --host=i686-pc-linux-gnu; make -j3 --silent;); }
+
+libc-build-fresh-m32-nm() { rm -rf build; mkdir -p build/glibc; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure CC="gcc -m32" CXX="g++ -m32" --prefix=/usr --build=i686-pc-linux-gnu --host=i686-pc-linux-gnu --disable-multi-arch; make -j3 --silent;); }
+
+libc-build-fresh-isa() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr CC="gcc -march=$1"; CXX="g++ -march=$1"; make -j3 --silent;); }
+
+
+libc-xcheck() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j3 --silent; make -j3 xcheck --silent); }
+
+libc-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j7 --silent; make -j7 check --silent); }
+
+libc-build() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j3 --silent;); }
+
+libc-string-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/string/ objdir=`pwd` check;) }
+
+libc-wcsmbs-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/wcsmbs/ objdir=`pwd` check;) }
+
+
+libc-dir-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/$1/ objdir=`pwd` check;) }
+. "$HOME/.cargo/env"
+
+grab-patch() { output=""; if [[ -z "$2" ]]; then output="out.patch"; else output="$2"; fi; wget $1; mv index.html $output; }
+
+libc-one-test() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make test t=$1); }
+
+# opam configuration
+test -r /home/noah/.opam/opam-init/init.sh && . /home/noah/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
+
+cur-branch() { git branch --show-current; }

@@ -1,10 +1,16 @@
+[init]
+	defaultBranch = master
 [user]
 	email = goldstein.w.n@gmail.com
 	name = Noah Goldstein
 [core]
 	editor = emacs
+[safe]
+	directory = /home/noah/programs/research/autolock/linux-dev/src
 [sendemail]
-  smtpuser = goldstein.w.n@gmail.com
-  smtpserver = smtp.googlemail.com
-  smtpencryption = tls
-  smtpserverport = 587
+	smtpencryption = tls
+	smtpserver = smtp.gmail.com
+	smtpuser = goldstein.w.n@gmail.com
+	smtpserverport = 587
+[credential]
+    helper = store
