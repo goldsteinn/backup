@@ -257,6 +257,8 @@ fpatchl-range() { patches=$(fpatch $1 $2 $3 "${@:4}"); echo "${patches}"; echo "
 
 gemail() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org $@; }
 
+svml-email() { git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc andrey.kolesov@intel.com --cc carlos@systemhalted.org $@; }
+
 git-email() { git send-email --cc goldstein.w.n@gmail.com --to $@; }
 
 gpatch-email() { patches=$(fpatch $1 $2); echo "Sending Out:"; echo "${patches}"; patch_list=$(echo ${patches} | tr '\n' ' '); gemail $patch_list; }
@@ -265,6 +267,8 @@ gpatch-email() { patches=$(fpatch $1 $2); echo "Sending Out:"; echo "${patches}"
 greply() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
 
 greply-libc() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
+
+greply-svml() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2}; first=${msgid:0:1}; last=${msgid:$((msgid_len-1)):1}; if [[ "$lhs" == "$first" ]]; then lhs=""; fi; if [[ "$rhs" == "$last" ]]; then rhs=""; fi; msgid=${lhs}${msgid}${rhs}; git send-email --to libc-alpha@sourceware.org --cc goldstein.w.n@gmail.com --cc hjl.tools@gmail.com --cc andrey.kolesov@intel.com --cc carlos@systemhalted.org --in-reply-to=$msgid $patches; }
 # git push --dry-run ssh://nwg@sourceware.org/git/glibc.git master:refs/heads/master
 # git push ssh://nwg@sourceware.org/git/glibc.git master:refs/heads/master
 #export WORKON_HOME=/home/noah/local_environments/py_envs
@@ -272,7 +276,7 @@ greply-libc() { lhs="<"; rhs=">"; msgid=$1; msgid_len=${#msgid}; patches=${@:2};
 
 export PYTHONPATH=$PYTHONPATH:"/home/noah/programs/pylibs"
 
-new-c-project() { git clone git@github.com:goldsteinn/c-starter.git $1 && (cd $1; git remote rm origin); }
+new-c-project() { git clone --recursive git@github.com:goldsteinn/c-starter.git $1 && (cd $1; git remote rm origin); }
 
 new-git-project() { git init && git remote add origin git@github.com:goldsteinn/$1.git; }
 
@@ -300,42 +304,44 @@ then
 fi
 
 
-libc-xcheck-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j3 --silent; make -j3 xcheck --silent); }
+libc-xcheck-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j12 --silent; make -j12 xcheck --silent); }
 
-libc-check-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j7 --silent; make -j7 check --silent); }
+libc-check-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j15 --silent; make -j15 check --silent); }
 
-libc-build-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j3 --silent;); }
+libc-build-fresh() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr; make -j12 --silent;); }
 
-libc-build-fresh-nm() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr --disable-multi-arch; make -j3 --silent;); }
-
-
-
-libc-build-fresh-nm-isa() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr --disable-multi-arch CC="gcc -march=$1"; CXX="g++ -march=$1"; make -j3 --silent;); }
-
-libc-build-fresh-m32() { rm -rf build; mkdir -p build/glibc; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure CC="gcc -m32" CXX="g++ -m32" --prefix=/usr --build=i686-pc-linux-gnu --host=i686-pc-linux-gnu; make -j3 --silent;); }
-
-libc-build-fresh-m32-nm() { rm -rf build; mkdir -p build/glibc; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure CC="gcc -m32" CXX="g++ -m32" --prefix=/usr --build=i686-pc-linux-gnu --host=i686-pc-linux-gnu --disable-multi-arch; make -j3 --silent;); }
-
-libc-build-fresh-isa() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr CC="gcc -march=$1"; CXX="g++ -march=$1"; make -j3 --silent;); }
+libc-build-fresh-nm() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr --disable-multi-arch; make -j12 --silent;); }
 
 
-libc-xcheck() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j3 --silent; make -j3 xcheck --silent); }
 
-libc-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j7 --silent; make -j7 check --silent); }
+libc-build-fresh-nm-isa() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr --disable-multi-arch CC="gcc -march=$1"; CXX="g++ -march=$1"; make -j12 --silent;); }
 
-libc-build() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j3 --silent;); }
+libc-build-fresh-m32() { rm -rf build; mkdir -p build/glibc; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure CC="gcc -m32" CXX="g++ -m32" --prefix=/usr --build=i686-pc-linux-gnu --host=i686-pc-linux-gnu; make -j12 --silent;); }
 
-libc-string-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/string/ objdir=`pwd` check;) }
+libc-build-fresh-m32-nm() { rm -rf build; mkdir -p build/glibc; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure CC="gcc -m32" CXX="g++ -m32" --prefix=/usr --build=i686-pc-linux-gnu --host=i686-pc-linux-gnu --disable-multi-arch; make -j12 --silent;); }
 
-libc-wcsmbs-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/wcsmbs/ objdir=`pwd` check;) }
+libc-build-fresh-isa() { rm -rf /home/noah/programs/opensource/glibc-dev/build; mkdir -p /home/noah/programs/opensource/glibc-dev/build/glibc/; (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; /home/noah/programs/opensource/glibc-dev/src/glibc/configure --prefix=/usr CC="gcc -march=$1"; CXX="g++ -march=$1"; make -j12 --silent;); }
 
 
-libc-dir-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/$1/ objdir=`pwd` check;) }
-. "$HOME/.cargo/env"
+libc-xcheck() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j12 --silent; make -j12 xcheck --silent); }
+
+libc-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j15 --silent; make -j15  check --silent); }
+
+libc-build() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH;  make -j12  --silent;); }
+
+libc-string-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j15 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/string/ objdir=`pwd` check;) }
+
+libc-wcsmbs-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j15 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/wcsmbs/ objdir=`pwd` check;) }
+
+
+libc-dir-check() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j15 --silent; make -r -C /home/noah/programs/opensource/glibc-dev/src/glibc/$1/ objdir=`pwd` check;) }
+#. "$HOME/.cargo/env"
 
 grab-patch() { output=""; if [[ -z "$2" ]]; then output="out.patch"; else output="$2"; fi; wget $1; mv index.html $output; }
 
-libc-one-test() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j 4 --silent; make test t=$1); }
+libc-one-test() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make -j15 --silent; make test t=$1); }
+
+libc-fast-one-test() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/; unset LD_LIBRARY_PATH; make test t=$1); }
 
 # opam configuration
 test -r /home/noah/.opam/opam-init/init.sh && . /home/noah/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true

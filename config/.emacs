@@ -1,3 +1,5 @@
+;;tuareg caml ocamlformat rust-mode bison-mode pdf-tools flycheck-pycheckers elpy yapfify which-key use-package nasm-mode magit cmake-mode elf-mode bazel lsp-mode nav-flash go-mode
+
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -8,7 +10,7 @@
    '(("melpa" . "http://melpa.org/packages/")
      ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
  '(package-selected-packages
-   '(tuareg caml ocamlformat rust-mode bison-mode pdf-tools flycheck-pycheckers elpy yapfify which-key use-package nasm-mode magit cmake-mode elf-mode bazel lsp-mode nav-flash go-mode))
+   '())
  '(safe-local-variable-values
    '((ccls-initialization-options :index
                                   (:threads 6 :initialBlacklist
@@ -231,10 +233,10 @@
       (let ((fname1 (substring fname0 pos nil)))
         (let ((fname2 (cond ((string-equal (substring fname1 0 1) "/") (substring fname1 1 nil))
                             (t fname1))))
-          (let ((fname3 (replace-in-string "/" "__" fname2)))
+          (let ((fname3 (replace-in-string "/" "_D_" fname2)))
             (let ((fname4 (replace-in-string "." "_" fname3)))
               (let ((fname5 (replace-in-string "-" "_" fname4)))
-                (let ((fname6 (format "_%s_" (upcase fname5))))
+                (let ((fname6 (format "%s_" (upcase fname5))))
                   fname6
                   )
                 )
@@ -342,7 +344,10 @@
         ((equal (cur-mode) 'mhtml-mode) (call-interactively #'html-render))
         (t (call-interactively #'recompile))))
 
+(global-unset-key "\C-z")
+(global-unset-key "\C-x\C-z")
 
+(global-set-key (kbd "C-z") ctl-x-map)
 (global-unset-key "\C-c\C-m")
 (global-set-key "\C-c\C-m" 'default-make)
 
@@ -658,7 +663,9 @@
 (c-set-offset 'comment-intro 0)
 
                                         ;https://emacs.stackexchange.com/questions/48500/how-to-clang-format-the-current-buffer-on-save
-(load "/usr/share/emacs/site-lisp/clang-format-14/clang-format.el")
+;; (load "/usr/share/emacs/site-lisp/clang-format-14/clang-format.el")
+;; Custom llvm + clang-format for proper macro indent
+(load "/home/noah/programs/builds/llvm-16/share/clang/clang-format.el")
 (load "/usr/share/emacs/site-lisp/llvm-14/tablegen-mode.el")
 (defun fill-buffer()
   (interactive)
@@ -916,7 +923,7 @@ Version 2016-07-20"
 
 (defun my-obj-dump-asm ()
   (interactive)
-  (my-obj-dump (split-s " "  (concat default-compiler-opts-extra " -c ")) ".S")
+  (my-obj-dump (split-s " "  (concat default-compiler-opts-extra " -march=native -c ")) ".S")
   )
 
 (defun my-obj-dump-rs ()
@@ -1037,7 +1044,7 @@ Version 2016-07-20"
                                              )
                                            )
 
-                           (call-process "objdump" nil "*objdump-result*" nil "-d" dstfile)
+                           (call-process "objdump" nil "*objdump-result*" nil "-d"    dstfile)
                            )
                           )
                     )
