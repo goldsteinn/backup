@@ -10,7 +10,7 @@
    '(("melpa" . "http://melpa.org/packages/")
      ("gnu" . "http://mirrors.tuna.tsinghua.edu.cn/elpa/gnu/")))
  '(package-selected-packages
-   '())
+   '(typescript-mode magit yapfify which-key use-package rust-mode pdf-tools ocamlformat nav-flash nasm-mode lsp-mode go-mode flycheck-pycheckers elpy elf-mode cmake-mode bison-mode bazel))
  '(safe-local-variable-values
    '((ccls-initialization-options :index
                                   (:threads 6 :initialBlacklist
@@ -22,7 +22,9 @@
  ;; If there is more than one, they won't work right.
  )
 (setq exec-path (append exec-path '("/home/noah/.local/bin:$PATH")))
+(setq exec-path (append exec-path '("/home/noah/.cargo/bin")))
 (setq exec-path (append exec-path '("/home/noah/programs/pyscript:$PATH")))
+(setenv "PATH" (concat "/home/noah/.cargo/bin:" (getenv "PATH")))
 ;; unset annoying ass binding
 ;;(global-set-key (kbd "C-[") nil)
 ;;(global-unset-key (kbd "C-["))
@@ -98,16 +100,17 @@
   )
 
 
-(defvar compiler "gcc" "Default C compiler")
+(defvar compiler "run-c" "Default C compiler")
 (defvar default-compiler-opts-extra "-DI_NO_HIDDEN_LABELS")
 (defvar compiler-opts-extra default-compiler-opts-extra)
-(defvar default-compiler-opts "-O3 -march=native -mtune=native")
+(defvar default-compiler-opts "-O3 -march=native")
 (defvar cur-compiler-opts default-compiler-opts)
+(defvar default-ll-compiler-opts "-O3 -mcpu=native")
+(defvar ll-compiler-opts default-ll-compiler-opts)
 
-
-(defvar rust-compile-cmd "-C panic=abort -C target-cpu=native -C debuginfo=0 -C opt-level=3 -F warnings ")
+(defvar rust-compile-cmd "-C panic=abort -C target-cpu=native -C debuginfo=0 -C opt-level=3 -Adead_code -Aunused-parens ")
 (defvar rust-compiler "rustc")
-(setq rust-compile-cmd "-C panic=abort -C target-cpu=native -C debuginfo=0 -C opt-level=3 -F warnings ")
+(setq rust-compile-cmd "-C panic=abort -C target-cpu=native -C debuginfo=0 -C opt-level=3 -Adead_code -Aunused-parens ")
 (setq rust-compiler "rustc")
 (defun -set-compiler(new-compiler)
   (setq compiler new-compiler)
@@ -118,6 +121,16 @@
   (interactive)
   (let ((new-compiler (read-file-name "Enter Compiler: " default-directory)))
     (-set-compiler new-compiler)
+    )
+  )
+(defun reset-ll-compiler-opts()
+  (interactive)
+  (setq ll-compiler-opts default-ll-compiler-opts)
+  )
+(defun set-ll-compiler-opts()
+  (interactive)
+  (let ((new-ll-compiler-opts (read-string "Enter New LL Compiler Options: ")))
+    (setq ll-compiler-opts new-ll-compiler-opts)
     )
   )
 
@@ -146,14 +159,17 @@
     )
   )
 
-
 (defun use-clang()
   (interactive)
-  (-set-compiler "clang"))
+  (-set-compiler (concat (getenv "LLVMB") "clang")))
+
+(defun use-c()
+  (interactive)
+  (-set-compiler "run-c"))
 
 (defun use-gcc()
   (interactive)
-  (-set-compiler "gcc"))
+  (-set-compiler "gcc-12"))
 
 
 
@@ -162,34 +178,90 @@
   (message compiler))
 
 (defun -get-c-compiler(compiler-exe)
-  (cond ((string-equal compiler-exe "clang") "clang")
-        ((string-equal compiler-exe "clang++") "clang")
-        ((string-equal compiler-exe "gcc") "gcc")
-        ((string-equal compiler-exe "g++") "gcc")
+  (cond ((string-equal "clang"  compiler-exe) "clang")
+        ((string-equal "clang++" compiler-exe) "clang")
+        ((string-equal "run-c"  compiler-exe) "run-c")
+        ((string-equal "run-cc" compiler-exe) "run-cc")
+        ((string-equal "gcc"  compiler-exe) "gcc")
+        ((string-equal "g++"  compiler-exe) "gcc")
         (t compiler-exe)))
 
 
 (defun -get-cxx-compiler(compiler-exe)
-  (cond ((string-equal compiler-exe "clang") "clang++")
-        ((string-equal compiler-exe "clang++") "clang++")
-        ((string-equal compiler-exe "gcc") "g++")
-        ((string-equal compiler-exe "g++") "g++")
+  (cond ((string-equal "clang"  compiler-exe) "clang++")
+        ((string-equal "clang++"  compiler-exe) "clang++")
+        ((string-equal "run-c"  compiler-exe) "run-cc")
+        ((string-equal "run-cc"  compiler-exe) "run-cc")
+        ((string-equal "gcc"  compiler-exe) "g++")
+        ((string-equal "g++"  compiler-exe) "g++")
         (t compiler-exe)))
+
+(defun -get-ll-c-compiler(compiler-exe)
+  (cond ((string-equal "clang"  compiler-exe) "clang")
+        ((string-equal "clang++"  compiler-exe) "clang")
+        ((string-equal "run-c"  compiler-exe) "run-c")
+        ((string-equal "run-cc"  compiler-exe) "run-c")
+        ((string-equal "gcc"  compiler-exe) "clang")
+        ((string-equal "g++"  compiler-exe) "clang")
+        (t compiler-exe)))
+
+(defun -get-ll-obj-compiler(compiler-exe compiler-dir)
+  (cond
+   ((string-equal "run-c"  compiler-exe) "run-llc")
+   ((string-equal "run-cc"  compiler-exe) "run-llc")
+   (compiler-dir (concat compiler-dir "llc"))
+   (t "llc"))
+  )
+
+(defun -get-ll-ll-compiler(compiler-exe compiler-dir)
+  (cond
+   ((string-equal "run-c"  compiler-exe) "run-opt")
+   ((string-equal "run-cc"  compiler-exe) "run-opt")
+   (compiler-dir (concat compiler-dir "opt"))
+   (t "opt"))
+  )
+
+
+(defun -get-ll-cxx-compiler(compiler-exe)
+  (cond ((string-equal "clang"  compiler-exe) "clang++")
+        ((string-equal "clang++"  compiler-exe) "clang++")
+        ((string-equal "run-c"  compiler-exe) "run-cc")
+        ((string-equal "run-cc"  compiler-exe) "run-cc")
+        ((string-equal "gcc"  compiler-exe) "clang++")
+        ((string-equal "g++"  compiler-exe) "clang++")
+        (t compiler-exe)))
+
+(defun -get-versioned-exe-part(exe part)
+  (if (string-match-p "-[0-9]+\\'" exe)
+      (nth part (split-string exe "-"))
+    (if (equal 0 part)
+        exe
+      nil)
+    )
+  )
 
 
 (defun -get-compiler(map-func)
   (let ((ret nil))
-    (let ((compiler-exe (file-name-nondirectory compiler)))
+    (let ((compiler-exe-v (file-name-nondirectory compiler)))
       (let ((compiler-dir (file-name-directory compiler)))
-        (setq ret
-              (format "%s%s"
-                      (if compiler-dir compiler-dir "") (funcall map-func compiler-exe)
-                      )
-              )
+        (let ((compiler-exe (-get-versioned-exe-part compiler-exe-v 0)))
+          (let ((compiler-ver (-get-versioned-exe-part compiler-exe-v 1)))
+            (setq ret
+                  (format "%s%s%s"
+                          (if compiler-dir compiler-dir "")
+                          (funcall map-func compiler-exe)
+                          (if compiler-ver (concat "-" compiler-ver) "")
+                          )
+
+                  )
+            )
+          )
         )
       )
     )
   )
+
 
 (defun get-c-compiler ()
   (interactive)
@@ -200,11 +272,45 @@
   (-get-compiler '-get-cxx-compiler)
   )
 
+(defun get-ll-c-compiler ()
+  (interactive)
+  (-get-compiler '-get-ll-c-compiler)
+  )
+(defun get-ll-cxx-compiler ()
+  (interactive)
+  (-get-compiler '-get-ll-cxx-compiler)
+  )
+
+(defun get-ll-compiler (map-func)
+  (interactive)
+  (let ((ret nil))
+    (let ((compiler-exe (file-name-nondirectory compiler)))
+      (let ((compiler-dir (file-name-directory compiler)))
+        (setq ret (funcall map-func compiler-exe compiler-dir))
+        )
+      )
+    )
+  )
+(defun get-ll-obj-compiler ()
+  (interactive)
+  (get-ll-compiler '-get-ll-obj-compiler)
+  )
+(defun get-ll-ll-compiler ()
+  (interactive)
+  (get-ll-compiler '-get-ll-ll-compiler)
+  )
+
 
 (defun get-mode-compiler()
   (cond ((equal (cur-mode) 'c++-mode) (get-cxx-compiler))
         ((equal (cur-mode) 'rust-mode) rust-compiler)
         (t (get-c-compiler))
+        )
+  )
+(defun get-ll-mode-compiler()
+  (cond ((equal (cur-mode) 'c++-mode) (get-ll-cxx-compiler))
+                                        ;        ((equal (cur-mode) 'rust-mode) rust-compiler)
+        (t (get-ll-c-compiler))
         )
   )
 
@@ -291,14 +397,19 @@
 (defun compile-cxx-command(cmd)
   (compile-command (get-cxx-compiler) cmd))
 
+(defun default-c-or-cxx-compiler-opts()
+  (interactive)
+  (cond ((equal (cur-mode) 'c++-mode) (concat "-std=c++20 -fno-exceptions -fno-rtti " cur-compiler-opts))
+        (t cur-compiler-opts)))
+
 (defun default-cxx-compile()
   (interactive)
-  (default-compile (compile-cxx-command (concat (concat "-std=c++17 " cur-compiler-opts) " "))))
+  (default-compile (compile-cxx-command (concat (default-c-or-cxx-compiler-opts) " "))))
 
 
 (defun default-c-compile()
   (interactive)
-  (default-compile (compile-c-command (concat cur-compiler-opts " "))))
+  (default-compile (compile-c-command (concat (default-c-or-cxx-compiler-opts) " "))))
 
 (defun default-asm-compile()
   (interactive)
@@ -322,12 +433,12 @@
   )
 
 
-
 (defun do-compile()
   (interactive)
   (save-some-buffers nil `(lambda () (eq (current-buffer) ,(current-buffer))))
   (cond ((equal (cur-mode) 'c-mode) (call-interactively #'default-c-compile))
         ((equal (cur-mode) 'c++-mode) (call-interactively #'default-cxx-compile))
+        ((equal (cur-mode) 'llvm-mode) (call-interactively #'default-ll-compile))
         ((equal (cur-mode) 'python-mode) (call-interactively #'elpy-check))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'default-asm-compile))
         ((equal (cur-mode) 'rust-mode) (call-interactively #'default-rust-compile))
@@ -394,8 +505,8 @@
 
 
 (defalias 'toggle-fill 'global-display-fill-column-indicator-mode)
-;(global-unset-key "\C-c\C-p")
-;(global-set-key "\C-c\C-p" 'toggle-fill)
+                                        ;(global-unset-key "\C-c\C-p")
+                                        ;(global-set-key "\C-c\C-p" 'toggle-fill)
 
 (setq ring-bell-function 'ignore)
 (setq package-check-signature 'nil)
@@ -441,7 +552,7 @@
 (defun comment-line ()
   (interactive)
   (progn
-    (insert "//////////////////////////////////////////////////////////////////////")
+    (insert "////////////////////////////////////////////////////////////////////////////////")
     )
   )
 
@@ -469,7 +580,7 @@
 (defun seperate-line ()
   (interactive)
   (cond ((equal (cur-mode) 'c-mode) (call-interactively #'c-comment-line))
-        ((equal (cur-mode) 'c++-mode) (call-interactively #'c-comment-line))
+        ((equal (cur-mode) 'c++-mode) (call-interactively #'comment-line))
         ((equal (cur-mode) 'rust-mode) (call-interactively #'c-comment-line))
         ((equal (cur-mode) 'python-mode) (call-interactively #'hash-line))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'c-comment-line))
@@ -603,6 +714,19 @@
   (skip-chars-backward "^[:space:]")
   (skip-chars-backward "[:space:]")
   )
+
+
+(defun fwd-path ()
+  (interactive)
+  (skip-chars-forward "^/")
+  (skip-chars-forward "/")
+  )
+(defun bkwd-path ()
+  (interactive)
+  (skip-chars-backward "^/")
+  (skip-chars-backward "/")
+  )
+
 (global-set-key "\M-f" 'fwd-whitespace)
 (global-set-key "\M-b" 'bkwd-whitespace)
 
@@ -613,6 +737,13 @@
 
 (global-set-key (kbd "C-.") 'fwd-whitespace)
 (global-set-key (kbd "C-,") 'bkwd-whitespace)
+
+(global-unset-key (kbd "C-;"))
+(global-unset-key (kbd "C-'"))
+
+
+(global-set-key (kbd "C-;") 'bkwd-path)
+(global-set-key (kbd "C-'") 'fwd-path)
 
 
                                         ;(add-hook 'c-mode-hook 'rtags-start-process-unless-running)
@@ -665,8 +796,10 @@
                                         ;https://emacs.stackexchange.com/questions/48500/how-to-clang-format-the-current-buffer-on-save
 ;; (load "/usr/share/emacs/site-lisp/clang-format-14/clang-format.el")
 ;; Custom llvm + clang-format for proper macro indent
-(load "/home/noah/programs/builds/llvm-16/share/clang/clang-format.el")
-(load "/usr/share/emacs/site-lisp/llvm-14/tablegen-mode.el")
+(load "/usr/share/emacs/site-lisp/clang-format-15/clang-format.el")
+(load "/usr/share/emacs/site-lisp/llvm-15/tablegen-mode.el")
+(load "/usr/share/emacs/site-lisp/llvm-15/llvm-mode.el")
+
 (defun fill-buffer()
   (interactive)
   (save-excursion
@@ -687,6 +820,7 @@
           ((equal (cur-mode) 'asm-mode) (call-interactively #'abfify-region))
           ((equal (cur-mode) 'perl-mode) (call-interactively #'perlify-region))
           ((equal (cur-mode) 'sh-mode) (call-interactively #'my-whitespace-cleanup-region))
+          ((equal (cur-mode) 'llvm-mode) (call-interactively #'irfify-region))
           ((equal (cur-mode) 'emacs-lisp-mode) t)
           ((equal (cur-mode) 'cmake-mode) t)
           ((equal (cur-mode) 'racket-mode) t)
@@ -710,6 +844,7 @@
           ((equal (cur-mode) 'emacs-lisp-mode) (call-interactively #'generic-clean-buffer))
           ((equal (cur-mode) 'cmake-mode) (call-interactively #'generic-clean-buffer))
           ((equal (cur-mode) 'sh-mode) (call-interactively #'generic-clean-buffer))
+          ((equal (cur-mode) 'llvm-mode) (call-interactively #'irfify-buffer))
           ((equal (cur-mode) 'makefile-gmake-mode) t)
           ((equal (cur-mode) 'markdown-mode) t)
           ((equal (cur-mode) 'racket-mode) (call-interactively #'rackify-buffer))
@@ -890,19 +1025,11 @@ Version 2016-07-20"
 
 (add-to-list 'load-path "/home/noah/.emacs.d/snippets")
 (require 'abfify)
+(require 'irfify)
 (require 'rackify)
 (require 'perlify)
 
-(defun my-obj-dump-c ()
-  (interactive)
-  (let ((c-compiler-args (split-s " " cur-compiler-opts)))
-    (push "-c" c-compiler-args)
-    (when (not (string-equal compiler-opts-extra ""))
-      (setq c-compiler-args (append c-compiler-args (split-s " " compiler-opts-extra)))
-      )
-    (my-obj-dump c-compiler-args ".c")
-    )
-  )
+
 
 (defun my-filter  (f args)
   (cond ((null args) nil)
@@ -919,17 +1046,106 @@ Version 2016-07-20"
   )
 
 
+(defun my-obj-dump-c ()
+  (interactive)
+  (let ((c-compiler-args (split-s " " cur-compiler-opts)))
+    (push "-c" c-compiler-args)
+    (when (not (string-equal compiler-opts-extra ""))
+      (setq c-compiler-args (append c-compiler-args (split-s " " compiler-opts-extra)))
+      )
+    (push (concat "-I" default-directory) c-compiler-args)
 
+    (my-obj-dump c-compiler-args (if (equal (cur-mode) 'c-mode) ".c" ".cc") (get-mode-compiler) nil)
+    )
+  )
+
+(defun my-obj-dump-cxx ()
+  (interactive)
+  (let ((c-compiler-args (split-s " " cur-compiler-opts)))
+    (push "-c" c-compiler-args)
+    (push "-std=c++20" c-compiler-args)
+    (push "-fno-exceptions" c-compiler-args)
+    (when (not (string-equal compiler-opts-extra ""))
+      (setq c-compiler-args (append c-compiler-args (split-s " " compiler-opts-extra)))
+      )
+    (push (concat "-I" default-directory) c-compiler-args)
+
+    (my-obj-dump c-compiler-args (if (equal (cur-mode) 'c-mode) ".c" ".cc") (get-mode-compiler) nil)
+    )
+  )
 
 (defun my-obj-dump-asm ()
   (interactive)
-  (my-obj-dump (split-s " "  (concat default-compiler-opts-extra " -march=native -c ")) ".S")
+  (my-obj-dump (split-s " "  (concat (concat "-I" default-directory) (concat default-compiler-opts-extra " -c "))) ".S" (get-mode-compiler) nil)
+  )
+
+(defun my-obj-dump-nasm ()
+  (interactive)
+  (my-obj-dump (split-s " "  (concat (concat "-Ipath" default-directory) (concat default-compiler-opts-extra " -f elf "))) ".asm" "nasm" nil)
   )
 
 (defun my-obj-dump-rs ()
   (interactive)
-  (my-obj-dump (split-s " " (concat rust-compile-cmd " --emit obj ")) ".rs")
+  (my-obj-dump (split-s " " (concat rust-compile-cmd " --emit obj ")) ".rs" (get-mode-compiler) nil)
   )
+
+(defun my-obj-dump-from-ll ()
+  (interactive)
+  ;;  -opaque-pointers
+  (my-obj-dump (split-s " " (concat "-filetype=obj " ll-compiler-opts)) ".ll" (get-ll-obj-compiler) nil)
+  )
+
+(defun my-obj-dump-c-to-ll ()
+  (interactive)
+  (let ((c-or-cxx-compiler-args (split-s " " (default-c-or-cxx-compiler-opts))))
+                                        ;    (push "-c" c-or-cxx-compiler-args)
+    (when (not (string-equal compiler-opts-extra ""))
+      (setq c-or-cxx-compiler-args (append c-or-cxx-compiler-args (split-s " " compiler-opts-extra)))
+      )
+    (push "-emit-llvm" c-or-cxx-compiler-args)
+    (push "-S" c-or-cxx-compiler-args)
+                                        ;    (push "-S" c-or-cxx-compiler-args)
+                                        ;   (message c-or-cxx-compiler-args)
+    (my-obj-dump c-or-cxx-compiler-args (if (equal (cur-mode) 'c-mode) ".c" ".cc") (get-ll-mode-compiler) t)
+    )
+  )
+
+(defun my-obj-dump-ll-to-ll ()
+  (interactive)
+  (let ((c-compiler-args (split-s " " cur-compiler-opts)))
+    (when (not (string-equal compiler-opts-extra ""))
+      (setq c-compiler-args (append c-compiler-args (split-s " " compiler-opts-extra)))
+      )
+                                        ;    (push "-S" c-compiler-args)
+                                        ;   (message c-compiler-args)
+    (setq c-compiler-args (delete  "-DI_NO_HIDDEN_LABELS" c-compiler-args))
+    (push "-S" c-compiler-args)
+                                        ;    (push "-opaque-pointers" c-compiler-args)
+    (message (get-ll-ll-compiler))
+    (my-obj-dump c-compiler-args ".ll" (get-ll-ll-compiler) t)
+    )
+  )
+
+(defun my-obj-dump-ll()
+  (interactive)
+  (cond ((equal (cur-mode) 'llvm-mode) (call-interactively #'my-obj-dump-ll-to-ll))
+        (t (call-interactively #'my-obj-dump-c-to-ll))))
+
+
+(defun my-obj-dump-ll-to-alive2 ()
+  (interactive)
+  (my-obj-dump (list "-smt-to=200000000") ".ll" "/home/noah/programs/opensource/llvm-dev/src/alive2/build/alive-tv" t)
+  )
+
+(defun my-obj-dump-alive2()
+  (interactive)
+  (call-interactively #'my-obj-dump-ll-to-alive2)
+  )
+
+                                        ;(global-unset-key "\C-x\C-j")
+                                        ;(global-set-key "\C-x\C-j" 'my-obj-dump-alive2)
+
+(global-set-key (kbd "C-x <C-i>") 'my-obj-dump-alive2)
 
 (defun copy-buffer-to-file (dst-file)
   (interactive)
@@ -1006,18 +1222,18 @@ Version 2016-07-20"
 
 
 
-(defun my-obj-dump (pass-compiler-args ext)
+(defun my-obj-dump (pass-compiler-args ext cc is-ll)
   (interactive)
+
   (save-some-buffers nil `(lambda () (eq (current-buffer) ,(current-buffer))))
 
-  (let ((basefile (format "/home/noah/.tmp/objdumps/%s-%s.o" (clean-buffer-name) (format-time-string "%Y-%m-%d-T%H-%M-%S"))))
+  (let ((basefile (concat "/home/noah/.tmp/objdumps/" (replace-in-string "." "-" (format "%s-%s" (clean-buffer-name) (format-time-string "%Y-%m-%d-T%H-%M-%S"))))))
 
 
-    (let ((srcfile (cond ((equal buffer-file-name 'nil) (concat basefile ext))
-                         (t (buffer-file-name)))))
-      (if (equal buffer-file-name 'nil)
-          (copy-buffer-to-file srcfile)
-        nil)
+    (let ((srcfile (concat basefile ext)))
+      (copy-buffer-to-file srcfile)
+      (message srcfile)
+
       (let ((dstfile (concat basefile ".o")))
         (let (return-to-position)
           (let ((existing-buffer (get-buffer "*objdump-result*")))
@@ -1026,25 +1242,33 @@ Version 2016-07-20"
                 (setq return-to-position (point))
                 (point-min)
                 (erase-buffer)
-                (asm-mode)
+                (if is-ll
+                    (llvm-mode)
+                  (asm-mode))
                 )
               )
-            (let ((process-args (list (get-mode-compiler) nil "*objdump-result*" t)))
+
+            (let ((process-args (list cc nil "*objdump-result*" t)))
               (let ((compiler-args pass-compiler-args))
                 (let ((compiler-files (list srcfile "-o" dstfile)))
                                         ;    (message (append compiler-args compiler-files))
-
                   (let ((ret (apply 'call-process
                                     (append process-args compiler-args compiler-files)
                                     )))
                     (cond ((equal ret 0) (let* ((#1=#:v (get-buffer-create "*objdump-result*")))
                                            (with-current-buffer #1#
                                              (erase-buffer)
-                                             (insert (format "$> %s %s" (get-mode-compiler) compiler-args))
+                                             (insert (format "; $> %s %s\n" cc compiler-args))
+                                             (if is-ll
+                                                 (insert-file-contents dstfile)
+                                               nil)
                                              )
                                            )
-
-                           (call-process "objdump" nil "*objdump-result*" nil "-d"    dstfile)
+                           (if is-ll
+                               nil
+                             (call-process "objdump" nil "*objdump-result*" nil "-d"  dstfile))
+                           ;; "--no-show-raw-insn"
+                           ;; "-dr"
                            )
                           )
                     )
@@ -1077,10 +1301,11 @@ Version 2016-07-20"
 (defun do-obj-dump()
   (interactive)
   (cond ((equal (cur-mode) 'c-mode) (call-interactively #'my-obj-dump-c))
-        ((equal (cur-mode) 'c++-mode) (call-interactively #'my-obj-dump-c))
+        ((equal (cur-mode) 'c++-mode) (call-interactively #'my-obj-dump-cxx))
         ((equal (cur-mode) 'python-mode) (call-interactively #'elpy-check))
         ((equal (cur-mode) 'asm-mode) (call-interactively #'my-obj-dump-asm))
         ((equal (cur-mode) 'rust-mode) (call-interactively #'my-obj-dump-rs))
+        ((equal (cur-mode) 'llvm-mode) (call-interactively #'my-obj-dump-from-ll))
         ((equal (cur-mode) 'markdown-mode) (call-interactively #'md-render))
         ((equal (cur-mode) 'mhtml-mode) (call-interactively #'html-render))
         (t (call-interactively #'my-obj-dump))))
@@ -1093,6 +1318,9 @@ Version 2016-07-20"
 (global-set-key "\C-c\C-o" 'do-obj-dump)
 (global-unset-key "\C-x\C-o")
 (global-set-key "\C-x\C-o" 'do-obj-dump)
+(global-unset-key "\C-x\C-p")
+(global-set-key "\C-x\C-p" 'my-obj-dump-ll)
+
 
 (defun my-whitespace-cleanup ()
   (interactive)
@@ -1158,10 +1386,18 @@ Version 2016-07-20"
 
 (defun my-shell-hook ()
   (define-key shell-mode-map "\C-c\C-r" 'do-recompile)
-  (define-key shell-mode-map "\C-c\C-p" 'toggle-fill)
+;  (define-key shell-mode-map "\C-c\C-p" 'toggle-fill)
 
   )
 (add-hook 'shell-mode-hook 'my-shell-hook)
+
+
+(defun my-dired-hook ()
+                                        ;  (define-key shell-mode-map "\C-c\C-r" 'do-recompile)
+                                        ;  (define-key shell-mode-map "\C-c\C-p" 'toggle-fill)
+  (define-key dired-mode-map "\C-t" 'switch-to-buffer)
+  )
+(add-hook 'dired-mode-hook 'my-dired-hook)
 
 
 
@@ -1316,20 +1552,29 @@ Version 2016-07-20"
   (shell (current-buffer))
   )
 
-(defun ssh-shell ()
-  (interactive)
-  (let ((host (read-string "Enter Host: ")))
-    (let ((host-name (ssh-username host)))
-      (let ((ssh-home-path (concat (concat (concat "/ssh:" host) ":/home/") host-name)))
-        (let ((default-directory ssh-home-path))
-          (find-file ssh-home-path)
-          (let ((shell-name (if (get-buffer "shell") (concat "shell-" host-name) "shell")))
-            (spawn-shell shell-name)
-            )
+
+(defun ssh-shell-impl (host)
+  (let ((host-name (ssh-username host)))
+    (let ((ssh-home-path (concat (concat (concat "/ssh:" host) ":/home/") host-name)))
+      (let ((default-directory ssh-home-path))
+                                        ;     (find-file ssh-home-path)
+        (let ((shell-name (concat host-name "-shell")))
+          (spawn-shell shell-name)
           )
         )
       )
     )
+  )
+(defun ssh-shell ()
+  (interactive)
+  (let ((host (read-string "Enter Host: ")))
+    (ssh-shell-impl host)
+    )
+  )
+
+(defun nwg-shell ()
+  (interactive)
+  (ssh-shell-impl "nwg@192.168.1.35")
   )
 
 
@@ -1815,8 +2060,6 @@ Version 2016-07-20"
 (global-unset-key (kbd "C--"))
 (global-unset-key (kbd "C-="))
 (global-unset-key "\C-l")
-(global-unset-key (kbd "C-;"))
-(global-unset-key (kbd "C-'"))
 
                                         ;(global-set-key (kbd "C-.") 'restore-coords-undo)
 (global-set-key (kbd "C-0") 'reset-coords)
@@ -1826,8 +2069,8 @@ Version 2016-07-20"
 (global-set-key (kbd "C-o") 'push-coords)
                                         ;(global-set-key (kbd "C-i") 'pop-coords)
 (global-set-key "\C-l" 'restore-coords-last)
-(global-set-key (kbd "C-;") 'restore-coords-cycle-backward)
-(global-set-key (kbd "C-'") 'restore-coords-cycle-forward)
+                                        ;(global-set-key (kbd "C-;") 'restore-coords-cycle-backward)
+                                        ;(global-set-key (kbd "C-'") 'restore-coords-cycle-forward)
 
 
 
@@ -1902,7 +2145,10 @@ Version 2016-07-20"
                               nil)
                           (if (equal todo 1)
                               (if (not (bound-and-true-p lsp-mode))
-                                  (call-interactively #'lsp)
+                                  (if (or (equal (cur-mode) 'c-mode)
+                                          (equal (cur-mode) 'c++-mode))
+                                      (call-interactively #'lsp)
+                                    nil)
                                 nil)
                             (if (equal todo 2)
                                 (call-interactively #'lsp-workspace-shutdown)
@@ -2190,24 +2436,40 @@ Version 2016-07-20"
                                         ;(font-lock-add-keywords 'asm-mode '(("cfi_adjust_cfa_offset" 'font-lock-face '(:foreground "DarkBlue"))))
 
 
-     ;; Add opam emacs directory to you load paths:
-;     (defun opam-path (path)
-;        (let ((opam-share-dir (ignore-errors (car (process-lines "opam" "config" "var"
-;   "share")))))
-;          (concat opam-share-dir "/" path)))
-;     (add-to-list 'load-path (opam-path "emacs/site-lisp"))
-;     ;; load bap-emacs-goodies
-;     (require 'bap-mode)
-;     (require 'dot)
+;; Add opam emacs directory to you load paths:
+                                        ;     (defun opam-path (path)
+                                        ;        (let ((opam-share-dir (ignore-errors (car (process-lines "opam" "config" "var"
+                                        ;   "share")))))
+                                        ;          (concat opam-share-dir "/" path)))
+                                        ;     (add-to-list 'load-path (opam-path "emacs/site-lisp"))
+                                        ;     ;; load bap-emacs-goodies
+                                        ;     (require 'bap-mode)
+                                        ;     (require 'dot)
 
 
 (defun y-or-n-p-with-return (orig-func &rest args)
   (let ((query-replace-map (copy-keymap query-replace-map)))
     (define-key query-replace-map (kbd "RET") 'act)
-    (apply orig-func args)))        
+    (apply orig-func args)))
 
 (advice-add 'y-or-n-p :around #'y-or-n-p-with-return)
 (setq hide-ifdef-shadow t)
 
 ;;              '((list1 ONE TWO)
 ;;                (list2 TWO THREE))))
+
+
+;(directory-files default-directory nil directory-files-no-dot-files-regexp)
+;;; function decides whether .h file is C or C++ header, sets C++ by
+;;; default because there's more chance of there being a .h without a
+;;; .cc than a .h without a .c (ie. for C++ template files)
+;(defun c-c++-header ()
+;  "sets either c-mode or c++-mode, whichever is appropriate for
+;header"
+;  (interactive)
+;  (let ((c-file (concat (substring (buffer-file-name) 0 -1) "c")))
+;    (if (file-exists-p c-file)
+;        (c-mode)
+;      (c++-mode))))
+;
+;(add-to-list 'auto-mode-alist '("\\.h\\'" . c-c++-header))
