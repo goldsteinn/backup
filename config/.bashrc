@@ -14,6 +14,7 @@ export PATH="/home/noah/.local/bin:$PATH"
 export PATH="/home/noah/programs/libraries/:$PATH"
 export PATH="/home/noah/programs/libraries/arcanist/bin/:$PATH"
 export PATH="/home/noah/programs/opensource/bap-dev/src/bap/install/bin:$PATH"
+export PATH="/home/noah/.cargo/bin/:$PATH"
 export LD_LIBRARY_PATH="/home/noah/.local/lib/"
 
 HISTCONTROL=ignoredups:erasedups
@@ -172,12 +173,21 @@ mykill () { foo=$(pidof $1); for w in $foo; do echo $w; kill -9 $w; done; }
 gb () { go build $1; }
 hgrep ()
 {
-    history | grep "$*" | tail -n 50
+    init_hist=$(history | awk '{$1="";print substr($0,2)}' | grep "$*" | tail -n 50)
+    lc=$(echo "${init_hist}" | wc -l)
+    if [[ $((lc)) -le 49 ]]; then
+        next_hist=$(grep -a "$*" ~/.bash-cmd-history/backup-history.txt | tail -n $((50 - lc)))
+        echo "${next_hist}"
+    fi
+    echo "${init_hist}"
 }
 fhgrep ()
 {
+    grep -a "$*" ~/.bash-cmd-history/backup-history.txt
     history | grep "$*"
 }
+
+
 search()
 {
     local s="$_"
@@ -251,6 +261,9 @@ fi
 
 fpatch() { git format-patch -v $1 HEAD~$2 "${@:3}"; }
 fpatchl() { patches=$(fpatch $1 $2 "${@:3}"); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
+
+fpatchk() { git format-patch -N -k -v $1 HEAD~$2 "${@:3}"; }
+fpatchkl() { patches=$(fpatchk $1 $2 "${@:3}"); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
 
 fpatch-range() { git format-patch -v $1 HEAD~$2..HEAD~$3 "${@:4}"; }
 fpatchl-range() { patches=$(fpatch $1 $2 $3 "${@:4}"); echo "${patches}"; echo "---------------"; echo $(echo ${patches} | tr '\n' ' '); }
@@ -347,3 +360,55 @@ libc-fast-one-test() { (cd /home/noah/programs/opensource/glibc-dev/build/glibc/
 test -r /home/noah/.opam/opam-init/init.sh && . /home/noah/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true
 
 cur-branch() { git branch --show-current; }
+
+arc-checkout() { arc patch $1; } # && git branch --set-upstream-to=origin/main
+arc-update() { arc diff HEAD^ --update $1; }
+arc-create() { arc diff --create HEAD^; }
+
+intel-on() { docker start chameleonsocks; }
+intel-off() { docker stop chameleonsocks; }
+
+. "$HOME/.cargo/env"
+
+export NWGH="nwg@192.168.1.35:/home/nwg"
+export NWG="nwg@192.168.1.35:"
+ssh-nwg() { ssh nwg@192.168.1.35; }
+
+
+
+export ANDROID_HOME=/home/noah/.android-sdk/
+export PATH=$PATH:$ANDROID_HOME/emulator
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+
+export LLVMB=/home/noah/programs/libraries/llvm-16/bin/
+export LLVML=/home/noah/programs/libraries/llvm-16/lib/
+export LLVMH=/home/noah/programs/libraries/llvm-16/include/
+export LLVMVER=16
+
+export JEMALLOCL=/home/noah/programs/libraries/jemalloc/build-flto/lib
+
+export ZSTD_FAST=/home/noah/programs/libraries/zstd/build-std-flto/bin/zstd
+
+cmake-clean() { rm CMakeCache.txt && rm -r CMakeFiles; }
+#run-c() { $(get-c) "$@"; }
+#run-cc() { $(get-cc) "$@"; }
+#run-ar() { $(get-ar) "$@"; }
+#run-nm() { $(get-nm) "$@"; }
+#run-clangd() { $(get-clangd) "$@"; }
+#run-opt() { $(get-opt) "$@"; }
+#run-llc() { $(get-llc) "$@"; }
+#run-ctidy() { $(get-ctidy) "$@"; }
+#run-cformat() { $(get-cformat) "$@"; }
+#run-ranlib() { $(get-ranlib) "$@"; }
+#run-objdump() { $(get-objdump) "$@"; }
+#run-readelf() { $(get-readelf) "$@"; }
+#run-objcopy() { $(get-objcopy) "$@"; }
+#run-lld() { $(get-lld) "$@"; }
+#run-c-ver() { $(get-c-ver) "$@"; }
+#run-cc-ver() { $(get-cc-ver) "$@"; }
+
