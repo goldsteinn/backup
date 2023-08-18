@@ -1,0 +1,4 @@
+#! /bin/bash
+
+echo -n "$(get-libc++-inc) $(get-libc++-ld)"
+

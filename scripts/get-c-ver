@@ -1,0 +1,2 @@
+#! /bin/bash
+echo -n  echo /home/noah/programs/libraries/compilers/${1}/bin/$([[ ${1} == *"clang"* ]] && echo "clang" || echo "gcc"); 

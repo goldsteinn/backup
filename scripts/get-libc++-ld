@@ -1,0 +1,3 @@
+#! /bin/bash
+
+echo -n "-nostdlib++ -L${LLVML}/x86_64-unknown-linux-gnu -Wl,-rpath=${LLVML}/x86_64-unknown-linux-gnu -lc++"

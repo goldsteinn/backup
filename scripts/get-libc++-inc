@@ -1,0 +1,4 @@
+#! /bin/bash
+
+#echo -n "-nostdinc++ -isystem ${LLVMH}/x86_64-unknown-linux-gnu/c++/v1 -isystem ${LLVMH}/c++/v1 "
+echo -n "-nostdinc++ -isystem ${LLVMH}/x86_64-unknown-linux-gnu/c++/v1 -isystem ${LLVMH}/c++/v1 "

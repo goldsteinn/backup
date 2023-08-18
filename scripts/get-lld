@@ -1,0 +1,3 @@
+#! /bin/bash
+# FIXME
+echo -n   /home/noah/programs/libraries/compilers/clang-16.0.0/bin/ld.lld

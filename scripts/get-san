@@ -1,0 +1,3 @@
+#! /bin/bash
+
+echo -n "-L${LLVML}/clang/${LLVMVER}/lib/x86_64-unknown-linux-gnu -Wl,-rpath=${LLVML}/clang/${LLVMVER}/lib/x86_64-unknown-linux-gnu"
